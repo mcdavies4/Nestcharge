@@ -1,0 +1,796 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#0a0f1e" />
+  <title>NestCharge — Find a Charger</title>
+  <link rel="manifest" href="manifest.json" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #070c1a;
+      --bg2: #0d1428;
+      --surface: #111827;
+      --surface2: #1a2236;
+      --border: rgba(255,255,255,0.07);
+      --accent: #00e5a0;
+      --accent2: #0af;
+      --text: #f0f4ff;
+      --muted: #8892a4;
+      --font-head: 'Syne', sans-serif;
+      --font-body: 'DM Sans', sans-serif;
+      --sheet-radius: 1.75rem;
+    }
+
+    html, body {
+      height: 100%;
+      overflow: hidden;
+      font-family: var(--font-body);
+      background: var(--bg);
+      color: var(--text);
+    }
+
+    /* ── MAP ── */
+    #map {
+      position: fixed;
+      inset: 0;
+      z-index: 0;
+    }
+
+    /* ── TOP BAR ── */
+    .topbar {
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      z-index: 10;
+      padding: 1rem 1rem 0.75rem;
+      background: linear-gradient(to bottom, rgba(7,12,26,0.95) 70%, transparent);
+    }
+
+    .topbar-inner {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    .logo-small {
+      font-family: var(--font-head);
+      font-size: 1.1rem;
+      font-weight: 800;
+      white-space: nowrap;
+    }
+    .logo-small span { color: var(--accent); }
+
+    .search-bar {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 100px;
+      padding: 0.55rem 1rem;
+      gap: 0.5rem;
+    }
+
+    .search-bar input {
+      flex: 1;
+      background: transparent;
+      border: none;
+      outline: none;
+      color: var(--text);
+      font-family: var(--font-body);
+      font-size: 0.88rem;
+    }
+    .search-bar input::placeholder { color: var(--muted); }
+
+    .search-icon { color: var(--muted); font-size: 0.9rem; }
+
+    /* ── FILTERS ── */
+    .filters {
+      display: flex;
+      gap: 0.5rem;
+      overflow-x: auto;
+      padding: 0.75rem 0 0.25rem;
+      scrollbar-width: none;
+    }
+    .filters::-webkit-scrollbar { display: none; }
+
+    .filter-chip {
+      display: flex;
+      align-items: center;
+      gap: 0.3rem;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      color: var(--muted);
+      padding: 0.35rem 0.9rem;
+      border-radius: 100px;
+      font-size: 0.78rem;
+      font-family: var(--font-body);
+      white-space: nowrap;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .filter-chip:hover { border-color: rgba(255,255,255,0.2); color: var(--text); }
+    .filter-chip.active {
+      background: rgba(0,229,160,0.12);
+      border-color: rgba(0,229,160,0.4);
+      color: var(--accent);
+    }
+
+    /* ── LOCATE BTN ── */
+    .locate-btn {
+      position: fixed;
+      right: 1rem;
+      z-index: 10;
+      width: 44px; height: 44px;
+      border-radius: 50%;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      color: var(--text);
+      font-size: 1.1rem;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: border-color 0.2s;
+      bottom: 340px;
+    }
+    .locate-btn:hover { border-color: var(--accent); }
+
+    /* ── BOTTOM SHEET ── */
+    .sheet {
+      position: fixed;
+      bottom: 0; left: 0; right: 0;
+      z-index: 20;
+      background: var(--bg2);
+      border-radius: var(--sheet-radius) var(--sheet-radius) 0 0;
+      border-top: 1px solid var(--border);
+      transition: transform 0.4s cubic-bezier(0.32, 0.72, 0, 1);
+      max-height: 85vh;
+      overflow: hidden;
+    }
+
+    .sheet.collapsed { transform: translateY(calc(100% - 120px)); }
+    .sheet.half { transform: translateY(0); }
+
+    .sheet-handle {
+      width: 40px; height: 4px;
+      background: rgba(255,255,255,0.15);
+      border-radius: 100px;
+      margin: 0.85rem auto 0;
+      cursor: pointer;
+    }
+
+    .sheet-header {
+      padding: 0.5rem 1.25rem 0.75rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      cursor: pointer;
+    }
+
+    .sheet-title {
+      font-family: var(--font-head);
+      font-size: 1rem;
+      font-weight: 700;
+    }
+
+    .sheet-count {
+      background: rgba(0,229,160,0.12);
+      color: var(--accent);
+      font-size: 0.75rem;
+      padding: 0.25rem 0.65rem;
+      border-radius: 100px;
+      font-weight: 500;
+    }
+
+    .sheet-scroll {
+      overflow-y: auto;
+      max-height: calc(85vh - 80px);
+      padding: 0 1rem 2rem;
+      scrollbar-width: none;
+    }
+    .sheet-scroll::-webkit-scrollbar { display: none; }
+
+    /* ── CHARGER CARDS ── */
+    .charger-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 1.25rem;
+      padding: 1rem;
+      margin-bottom: 0.75rem;
+      cursor: pointer;
+      transition: border-color 0.25s, transform 0.2s;
+      display: flex;
+      gap: 0.875rem;
+      align-items: flex-start;
+    }
+    .charger-card:hover { border-color: rgba(0,229,160,0.3); transform: translateY(-1px); }
+    .charger-card.selected { border-color: var(--accent); }
+
+    .charger-avatar {
+      width: 44px; height: 44px;
+      min-width: 44px;
+      border-radius: 50%;
+      background: var(--surface2);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.3rem;
+    }
+
+    .charger-info { flex: 1; }
+
+    .charger-name {
+      font-family: var(--font-head);
+      font-size: 0.95rem;
+      font-weight: 700;
+      margin-bottom: 0.2rem;
+    }
+
+    .charger-meta {
+      display: flex;
+      gap: 0.75rem;
+      font-size: 0.78rem;
+      color: var(--muted);
+      flex-wrap: wrap;
+      margin-bottom: 0.5rem;
+    }
+
+    .charger-meta span { display: flex; align-items: center; gap: 0.2rem; }
+
+    .charger-tags { display: flex; gap: 0.4rem; flex-wrap: wrap; }
+
+    .tag {
+      font-size: 0.7rem;
+      padding: 0.2rem 0.55rem;
+      border-radius: 100px;
+      background: var(--surface2);
+      color: var(--muted);
+      border: 1px solid var(--border);
+    }
+    .tag.green { background: rgba(0,229,160,0.1); color: var(--accent); border-color: rgba(0,229,160,0.2); }
+    .tag.blue { background: rgba(0,170,255,0.1); color: var(--accent2); border-color: rgba(0,170,255,0.2); }
+
+    .charger-price {
+      text-align: right;
+      min-width: 60px;
+    }
+    .price-val {
+      font-family: var(--font-head);
+      font-size: 1.1rem;
+      font-weight: 800;
+      color: var(--accent);
+    }
+    .price-unit { font-size: 0.7rem; color: var(--muted); }
+
+    /* ── DETAIL PANEL ── */
+    .detail-panel {
+      position: fixed;
+      bottom: 0; left: 0; right: 0;
+      z-index: 30;
+      background: var(--bg2);
+      border-radius: var(--sheet-radius) var(--sheet-radius) 0 0;
+      border-top: 1px solid var(--border);
+      transform: translateY(100%);
+      transition: transform 0.4s cubic-bezier(0.32, 0.72, 0, 1);
+      padding: 1rem 1.25rem 2.5rem;
+    }
+    .detail-panel.open { transform: translateY(0); }
+
+    .detail-handle {
+      width: 40px; height: 4px;
+      background: rgba(255,255,255,0.15);
+      border-radius: 100px;
+      margin: 0 auto 1rem;
+      cursor: pointer;
+    }
+
+    .detail-top {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      margin-bottom: 1.25rem;
+    }
+
+    .detail-avatar {
+      width: 56px; height: 56px;
+      border-radius: 50%;
+      background: var(--surface2);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.75rem;
+      border: 2px solid rgba(0,229,160,0.3);
+    }
+
+    .detail-name {
+      font-family: var(--font-head);
+      font-size: 1.2rem;
+      font-weight: 800;
+    }
+
+    .detail-host { font-size: 0.82rem; color: var(--muted); margin-top: 0.15rem; }
+
+    .detail-stats {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 0.75rem;
+      margin-bottom: 1.25rem;
+    }
+
+    .detail-stat {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 1rem;
+      padding: 0.75rem;
+      text-align: center;
+    }
+    .detail-stat-val {
+      font-family: var(--font-head);
+      font-size: 1.1rem;
+      font-weight: 700;
+      color: var(--accent);
+    }
+    .detail-stat-label { font-size: 0.7rem; color: var(--muted); margin-top: 0.2rem; }
+
+    .detail-availability {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 1rem;
+      padding: 0.875rem 1rem;
+      margin-bottom: 1.25rem;
+    }
+
+    .avail-label {
+      font-size: 0.75rem;
+      color: var(--muted);
+      margin-bottom: 0.5rem;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+
+    .avail-slots {
+      display: flex;
+      gap: 0.4rem;
+      flex-wrap: wrap;
+    }
+
+    .slot {
+      padding: 0.3rem 0.7rem;
+      border-radius: 100px;
+      font-size: 0.75rem;
+      border: 1px solid var(--border);
+      background: var(--surface2);
+      color: var(--muted);
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .slot.available { color: var(--text); border-color: rgba(255,255,255,0.15); }
+    .slot.available:hover { border-color: var(--accent); color: var(--accent); }
+    .slot.selected-slot { background: rgba(0,229,160,0.15); border-color: var(--accent); color: var(--accent); }
+    .slot.taken { opacity: 0.35; cursor: not-allowed; text-decoration: line-through; }
+
+    .book-btn {
+      width: 100%;
+      background: var(--accent);
+      color: #000;
+      border: none;
+      padding: 1rem;
+      border-radius: 100px;
+      font-family: var(--font-head);
+      font-size: 1rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: opacity 0.2s, transform 0.2s;
+    }
+    .book-btn:hover { opacity: 0.9; transform: translateY(-1px); }
+    .book-btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+
+    /* ── OVERLAY ── */
+    .overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.5);
+      z-index: 25;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.3s;
+    }
+    .overlay.show { opacity: 1; pointer-events: all; }
+
+    /* ── CUSTOM MAP MARKER STYLES ── */
+    .custom-marker {
+      background: var(--accent);
+      color: #000;
+      font-family: var(--font-head);
+      font-weight: 700;
+      font-size: 0.72rem;
+      padding: 0.3rem 0.6rem;
+      border-radius: 100px;
+      border: 2px solid #000;
+      box-shadow: 0 2px 8px rgba(0,229,160,0.4);
+      white-space: nowrap;
+      cursor: pointer;
+      transition: transform 0.2s;
+    }
+    .custom-marker:hover { transform: scale(1.1); }
+    .custom-marker.selected { background: #fff; transform: scale(1.1); }
+  </style>
+</head>
+<body>
+
+  <!-- MAP -->
+  <div id="map"></div>
+
+  <!-- OVERLAY -->
+  <div class="overlay" id="overlay" onclick="closeDetail()"></div>
+
+  <!-- TOP BAR -->
+  <div class="topbar">
+    <div class="topbar-inner">
+      <div class="logo-small">Nest<span>Charge</span></div>
+      <div class="search-bar">
+        <span class="search-icon">🔍</span>
+        <input type="text" placeholder="Search by postcode or area..." id="search-input" />
+      </div>
+    </div>
+    <div class="filters">
+      <button class="filter-chip active" data-filter="all" onclick="filterChargers('all', this)">⚡ All</button>
+      <button class="filter-chip" data-filter="fast" onclick="filterChargers('fast', this)">🚀 Fast (7kW+)</button>
+      <button class="filter-chip" data-filter="slow" onclick="filterChargers('slow', this)">🐢 Slow (3kW)</button>
+      <button class="filter-chip" data-filter="cheap" onclick="filterChargers('cheap', this)">💷 Under £0.25/hr</button>
+      <button class="filter-chip" data-filter="available" onclick="filterChargers('available', this)">✅ Available Now</button>
+    </div>
+  </div>
+
+  <!-- LOCATE BUTTON -->
+  <button class="locate-btn" onclick="locateUser()" title="Find my location">📍</button>
+
+  <!-- BOTTOM SHEET — CHARGER LIST -->
+  <div class="sheet collapsed" id="sheet">
+    <div class="sheet-handle" onclick="toggleSheet()"></div>
+    <div class="sheet-header" onclick="toggleSheet()">
+      <span class="sheet-title">Chargers nearby</span>
+      <span class="sheet-count" id="charger-count">6 available</span>
+    </div>
+    <div class="sheet-scroll" id="charger-list"></div>
+  </div>
+
+  <!-- DETAIL PANEL -->
+  <div class="detail-panel" id="detail-panel">
+    <div class="detail-handle" onclick="closeDetail()"></div>
+    <div id="detail-content"></div>
+  </div>
+
+  <script>
+    // ── MOCK DATA ──
+    const chargers = [
+      {
+        id: 1,
+        name: "Sarah's Driveway",
+        host: "Sarah M. · ⭐ 4.9 · 47 sessions",
+        emoji: "🏠",
+        lat: 51.5074, lng: -0.1278,
+        speed: 7, speedLabel: "7kW",
+        price: 0.28,
+        distance: "0.3 miles",
+        available: true,
+        type: "Type 2",
+        slots: ["06:00","07:00","08:00","09:00","10:00","14:00","15:00","16:00","18:00","19:00"],
+        taken: ["07:00","10:00"]
+      },
+      {
+        id: 2,
+        name: "James — Garage",
+        host: "James K. · ⭐ 4.8 · 32 sessions",
+        emoji: "🔌",
+        lat: 51.509, lng: -0.118,
+        speed: 11, speedLabel: "11kW",
+        price: 0.24,
+        distance: "0.6 miles",
+        available: true,
+        type: "Type 2",
+        slots: ["06:00","07:00","08:00","09:00","12:00","13:00","17:00","18:00","19:00","20:00"],
+        taken: ["08:00","13:00","18:00"]
+      },
+      {
+        id: 3,
+        name: "Priya's Flat Bay",
+        host: "Priya S. · ⭐ 5.0 · 18 sessions",
+        emoji: "🏢",
+        lat: 51.515, lng: -0.132,
+        speed: 3.6, speedLabel: "3.6kW",
+        price: 0.18,
+        distance: "0.8 miles",
+        available: true,
+        type: "3-pin",
+        slots: ["20:00","21:00","22:00","23:00","00:00","01:00","02:00","03:00","04:00","05:00"],
+        taken: []
+      },
+      {
+        id: 4,
+        name: "Marcus — Side Street",
+        host: "Marcus O. · ⭐ 4.7 · 61 sessions",
+        emoji: "🚗",
+        lat: 51.503, lng: -0.123,
+        speed: 7, speedLabel: "7kW",
+        price: 0.26,
+        distance: "1.1 miles",
+        available: false,
+        type: "Type 2",
+        slots: ["09:00","10:00","11:00","12:00","13:00","14:00","15:00","16:00"],
+        taken: ["09:00","10:00","11:00","12:00","13:00","14:00","15:00","16:00"]
+      },
+      {
+        id: 5,
+        name: "Chen Family Home",
+        host: "Wei C. · ⭐ 4.9 · 29 sessions",
+        emoji: "🏡",
+        lat: 51.512, lng: -0.115,
+        speed: 22, speedLabel: "22kW",
+        price: 0.32,
+        distance: "1.4 miles",
+        available: true,
+        type: "Type 2 (3-phase)",
+        slots: ["06:00","07:00","08:00","16:00","17:00","18:00","19:00","20:00"],
+        taken: ["07:00"]
+      },
+      {
+        id: 6,
+        name: "Anita — Driveway",
+        host: "Anita B. · ⭐ 4.6 · 14 sessions",
+        emoji: "🌿",
+        lat: 51.506, lng: -0.135,
+        speed: 7, speedLabel: "7kW",
+        price: 0.22,
+        distance: "1.7 miles",
+        available: true,
+        type: "Type 2",
+        slots: ["08:00","09:00","10:00","11:00","17:00","18:00","19:00","20:00"],
+        taken: ["09:00"]
+      }
+    ];
+
+    let map, markers = [], activeFilter = 'all', selectedCharger = null, selectedSlot = null;
+    let sheetOpen = false;
+
+    // ── INIT MAP ──
+    function initMap() {
+      map = new google.maps.Map(document.getElementById('map'), {
+        center: { lat: 51.5074, lng: -0.1278 },
+        zoom: 14,
+        disableDefaultUI: true,
+        styles: [
+          { elementType: 'geometry', stylers: [{ color: '#0d1428' }] },
+          { elementType: 'labels.text.fill', stylers: [{ color: '#8892a4' }] },
+          { elementType: 'labels.text.stroke', stylers: [{ color: '#0d1428' }] },
+          { featureType: 'road', elementType: 'geometry', stylers: [{ color: '#1a2236' }] },
+          { featureType: 'road', elementType: 'labels.text.fill', stylers: [{ color: '#5a6478' }] },
+          { featureType: 'water', elementType: 'geometry', stylers: [{ color: '#070c1a' }] },
+          { featureType: 'poi', stylers: [{ visibility: 'off' }] },
+          { featureType: 'transit', stylers: [{ visibility: 'off' }] },
+          { featureType: 'administrative', elementType: 'geometry', stylers: [{ color: '#1a2236' }] },
+        ]
+      });
+
+      renderChargers(chargers);
+      renderList(chargers);
+
+      // Open sheet on map click away
+      map.addListener('click', () => {
+        closeDetail();
+      });
+    }
+
+    // ── RENDER MAP MARKERS ──
+    function renderChargers(list) {
+      markers.forEach(m => m.setMap(null));
+      markers = [];
+
+      list.forEach(c => {
+        const el = document.createElement('div');
+        el.className = 'custom-marker';
+        el.innerHTML = `${c.emoji} £${c.price}/hr`;
+        if (!c.available) { el.style.opacity = '0.5'; el.style.background = '#8892a4'; }
+
+        const marker = new google.maps.marker.AdvancedMarkerElement({
+          map,
+          position: { lat: c.lat, lng: c.lng },
+          content: el,
+          title: c.name
+        });
+
+        marker.addListener('click', () => openDetail(c, el));
+        markers.push(marker);
+        marker._el = el;
+        marker._data = c;
+      });
+    }
+
+    // ── RENDER LIST ──
+    function renderList(list) {
+      const container = document.getElementById('charger-list');
+      document.getElementById('charger-count').textContent = `${list.filter(c=>c.available).length} available`;
+
+      container.innerHTML = list.map(c => `
+        <div class="charger-card ${selectedCharger?.id === c.id ? 'selected' : ''}"
+             onclick="openDetail(chargers.find(x=>x.id===${c.id}))">
+          <div class="charger-avatar">${c.emoji}</div>
+          <div class="charger-info">
+            <div class="charger-name">${c.name}</div>
+            <div class="charger-meta">
+              <span>📍 ${c.distance}</span>
+              <span>⚡ ${c.speedLabel}</span>
+              <span>🔌 ${c.type}</span>
+            </div>
+            <div class="charger-tags">
+              <span class="tag ${c.available ? 'green' : ''}">${c.available ? '✅ Available' : '⛔ Busy'}</span>
+              <span class="tag blue">${c.speedLabel}</span>
+              ${c.price < 0.25 ? '<span class="tag green">💷 Great price</span>' : ''}
+            </div>
+          </div>
+          <div class="charger-price">
+            <div class="price-val">£${c.price}</div>
+            <div class="price-unit">per hr</div>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    // ── OPEN DETAIL ──
+    function openDetail(charger, markerEl) {
+      selectedCharger = charger;
+      selectedSlot = null;
+
+      // Reset all markers
+      markers.forEach(m => {
+        m._el.classList.remove('selected');
+      });
+      if (markerEl) markerEl.classList.add('selected');
+
+      const panel = document.getElementById('detail-panel');
+      const content = document.getElementById('detail-content');
+
+      const slotsHtml = charger.slots.map(s => {
+        const isTaken = charger.taken.includes(s);
+        return `<span class="slot ${isTaken ? 'taken' : 'available'}" 
+                      onclick="${isTaken ? '' : `selectSlot('${s}', this)`}">${s}</span>`;
+      }).join('');
+
+      content.innerHTML = `
+        <div class="detail-top">
+          <div class="detail-avatar">${charger.emoji}</div>
+          <div>
+            <div class="detail-name">${charger.name}</div>
+            <div class="detail-host">${charger.host}</div>
+          </div>
+        </div>
+        <div class="detail-stats">
+          <div class="detail-stat">
+            <div class="detail-stat-val">£${charger.price}</div>
+            <div class="detail-stat-label">per hour</div>
+          </div>
+          <div class="detail-stat">
+            <div class="detail-stat-val">${charger.speedLabel}</div>
+            <div class="detail-stat-label">charge speed</div>
+          </div>
+          <div class="detail-stat">
+            <div class="detail-stat-val">${charger.distance}</div>
+            <div class="detail-stat-label">from you</div>
+          </div>
+        </div>
+        <div class="detail-availability">
+          <div class="avail-label">Available slots today</div>
+          <div class="avail-slots">${slotsHtml}</div>
+        </div>
+        <button class="book-btn" id="book-btn" onclick="handleBook()" ${!charger.available ? 'disabled' : ''}>
+          ${charger.available ? '⚡ Book This Charger' : '⛔ Fully Booked Today'}
+        </button>
+      `;
+
+      panel.classList.add('open');
+      document.getElementById('overlay').classList.add('show');
+
+      // Pan map to charger
+      map.panTo({ lat: charger.lat, lng: charger.lng });
+
+      // Update list highlight
+      renderList(getFilteredList());
+    }
+
+    // ── SELECT SLOT ──
+    function selectSlot(slot, el) {
+      selectedSlot = slot;
+      document.querySelectorAll('.slot').forEach(s => s.classList.remove('selected-slot'));
+      el.classList.add('selected-slot');
+      const btn = document.getElementById('book-btn');
+      if (btn) btn.textContent = `⚡ Book ${slot} slot`;
+    }
+
+    // ── HANDLE BOOK ──
+    function handleBook() {
+      if (!selectedSlot) {
+        alert('Please select a time slot first.');
+        return;
+      }
+      alert(`✅ Booking request sent!\n\n${selectedCharger.name}\n🕐 ${selectedSlot} today\n💷 £${selectedCharger.price}/hr\n\nWe'll notify you once confirmed.`);
+      closeDetail();
+    }
+
+    // ── CLOSE DETAIL ──
+    function closeDetail() {
+      document.getElementById('detail-panel').classList.remove('open');
+      document.getElementById('overlay').classList.remove('show');
+      selectedCharger = null;
+      markers.forEach(m => m._el.classList.remove('selected'));
+      renderList(getFilteredList());
+    }
+
+    // ── TOGGLE SHEET ──
+    function toggleSheet() {
+      const sheet = document.getElementById('sheet');
+      sheetOpen = !sheetOpen;
+      sheet.classList.toggle('collapsed', !sheetOpen);
+      sheet.classList.toggle('half', sheetOpen);
+    }
+
+    // ── FILTER ──
+    function filterChargers(filter, btn) {
+      activeFilter = filter;
+      document.querySelectorAll('.filter-chip').forEach(c => c.classList.remove('active'));
+      btn.classList.add('active');
+      const filtered = getFilteredList();
+      renderChargers(filtered);
+      renderList(filtered);
+    }
+
+    function getFilteredList() {
+      return chargers.filter(c => {
+        if (activeFilter === 'fast') return c.speed >= 7;
+        if (activeFilter === 'slow') return c.speed < 7;
+        if (activeFilter === 'cheap') return c.price < 0.25;
+        if (activeFilter === 'available') return c.available;
+        return true;
+      });
+    }
+
+    // ── LOCATE USER ──
+    function locateUser() {
+      if (!navigator.geolocation) return;
+      navigator.geolocation.getCurrentPosition(pos => {
+        const loc = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+        map.panTo(loc);
+        map.setZoom(15);
+        new google.maps.Marker({
+          map,
+          position: loc,
+          icon: {
+            path: google.maps.SymbolPath.CIRCLE,
+            scale: 8,
+            fillColor: '#00e5a0',
+            fillOpacity: 1,
+            strokeColor: '#fff',
+            strokeWeight: 2
+          }
+        });
+      });
+    }
+
+    // ── AUTO OPEN SHEET ──
+    setTimeout(() => {
+      const sheet = document.getElementById('sheet');
+      sheet.classList.remove('collapsed');
+      sheet.classList.add('half');
+      sheetOpen = true;
+    }, 1200);
+  </script>
+
+  <!-- Load Google Maps with your API key -->
+  <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCSz8gp0dyda632ZLvu0R9p1z26EQDds4A&libraries=marker&callback=initMap" async defer></script>
+
+</body>
+</html>
