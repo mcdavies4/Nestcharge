@@ -8,6 +8,7 @@
   <link rel="manifest" href="manifest.json" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link href="https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet" />
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -941,11 +942,52 @@
       document.getElementById('rv-earnings').textContent = '~£' + monthly + '/month';
     }
 
-    // ── SUBMIT ──
-    function submitListing() {
-      // In production: POST to your backend/Firebase
-      console.log('Listing submitted:', state);
+    // ── SUPABASE ──
+    const { createClient } = supabase;
+    const sb = createClient(
+      'https://ovhezomrlrfajrmwbdya.supabase.co',
+      'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im92aGV6b21ybHJmYWpybXdiZHlhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE5NjM1MzEsImV4cCI6MjA4NzUzOTUzMX0.UTFUvtMKkyIIdJrc0GewWyTzAtONymUqZo_jJtT2ONI'
+    );
 
+    // ── SUBMIT — saves to Supabase listings table ──
+    async function submitListing() {
+      const btn = document.querySelector('#step-4 .btn-primary');
+      btn.disabled = true;
+      btn.textContent = 'Saving...';
+
+      // Check user is logged in
+      const { data: { session } } = await sb.auth.getSession();
+      if (!session) {
+        alert('Please sign in first to list your charger.');
+        window.location.href = 'auth.html';
+        return;
+      }
+
+      const { error } = await sb.from('listings').insert({
+        host_id: session.user.id,
+        name: state.name || 'My Charger',
+        charger_type: state.chargerType,
+        connector: state.connector,
+        speed: parseFloat(state.speed),
+        price_per_hour: state.price,
+        address: state.address,
+        postcode: state.postcode,
+        location_type: state.locationType,
+        access_instructions: state.accessInstructions,
+        available_slots: state.availableSlots,
+        min_duration: parseInt(state.minDuration),
+        is_active: true
+      });
+
+      if (error) {
+        console.error('Error saving listing:', error);
+        alert('Something went wrong saving your listing. Please try again.');
+        btn.disabled = false;
+        btn.textContent = '🚀 List my charger';
+        return;
+      }
+
+      // Success
       document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
       document.getElementById('step-success').classList.add('active');
       document.getElementById('progress-fill').style.width = '100%';

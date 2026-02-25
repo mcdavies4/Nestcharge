@@ -780,7 +780,7 @@
       'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im92aGV6b21ybHJmYWpybXdiZHlhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE5NjM1MzEsImV4cCI6MjA4NzUzOTUzMX0.UTFUvtMKkyIIdJrc0GewWyTzAtONymUqZo_jJtT2ONI'
     );
 
-    // ── LOAD USER ──
+    // ── LOAD USER AND REAL BOOKINGS ──
     window.addEventListener('DOMContentLoaded', async () => {
       const { data: { session } } = await sb.auth.getSession();
       if (session) {
@@ -791,8 +791,69 @@
         document.getElementById('greeting-name').textContent = 'Hey, ' + first + ' 👋';
         document.getElementById('greeting-sub').textContent = 'Here are your charging sessions';
         document.getElementById('avatar-btn').textContent = first.charAt(0).toUpperCase();
+
+        // Load real bookings from Supabase
+        await loadRealBookings(session.user.id);
       }
     });
+
+    async function loadRealBookings(userId) {
+      const { data: bookings, error } = await sb
+        .from('bookings')
+        .select('*')
+        .eq('driver_id', userId)
+        .order('created_at', { ascending: false });
+
+      if (error || !bookings || bookings.length === 0) return;
+
+      // Update stats
+      const totalSpent = bookings.reduce((sum, b) => sum + (b.total_amount || 0), 0);
+      document.querySelector('.stats-row .stat-card:nth-child(1) .stat-val').textContent = bookings.length;
+      document.querySelector('.stats-row .stat-card:nth-child(2) .stat-val').textContent = '£' + totalSpent.toFixed(2);
+
+      // Build real bookings section
+      const confirmedSection = document.getElementById('section-upcoming');
+      const completedSection = document.getElementById('section-completed');
+
+      // Clear demo data and replace with real
+      const realUpcoming = bookings.filter(b => b.status === 'confirmed' || b.status === 'pending');
+      const realCompleted = bookings.filter(b => b.status === 'completed');
+      const realCancelled = bookings.filter(b => b.status === 'cancelled');
+
+      if (realUpcoming.length > 0) {
+        const cards = realUpcoming.map(b => buildBookingCard(b, 'upcoming')).join('');
+        confirmedSection.innerHTML = `<div class="section-label">Your Bookings</div>${cards}`;
+      }
+
+      if (realCompleted.length > 0) {
+        const cards = realCompleted.map(b => buildBookingCard(b, 'completed')).join('');
+        completedSection.innerHTML = `<div class="section-label">Past Sessions</div>${cards}`;
+      }
+    }
+
+    function buildBookingCard(b, type) {
+      const date = new Date(b.booking_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+      const badgeClass = type === 'upcoming' ? 'badge-upcoming' : 'badge-completed';
+      const badgeText = type === 'upcoming' ? 'Confirmed' : 'Completed';
+      const borderClass = type === 'upcoming' ? 'upcoming' : 'completed';
+      return `
+        <div class="booking-card ${borderClass}">
+          <div class="card-top">
+            <div class="card-host">
+              <div class="host-emoji">⚡</div>
+              <div>
+                <div class="host-info-name">Booking ${b.reference || b.id.slice(0,8)}</div>
+                <div class="host-info-sub">${date} · ${b.time_slot}</div>
+              </div>
+            </div>
+            <span class="status-badge ${badgeClass}">${badgeText}</span>
+          </div>
+          <div class="card-bottom">
+            <span class="card-ref">${b.reference || 'NC-' + b.id.slice(0,6).toUpperCase()}</span>
+            <span class="card-price">£${parseFloat(b.total_amount).toFixed(2)}</span>
+          </div>
+        </div>`;
+    }
 
     // ── FILTER ──
     function filterBookings(filter, btn) {

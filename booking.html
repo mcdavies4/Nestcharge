@@ -9,6 +9,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link href="https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet" />
   <script src="https://js.stripe.com/v3/"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -512,6 +513,13 @@
   </div>
 
   <script>
+    // ── SUPABASE ──
+    const { createClient } = supabase;
+    const sb = createClient(
+      'https://ovhezomrlrfajrmwbdya.supabase.co',
+      'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im92aGV6b21ybHJmYWpybXdiZHlhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE5NjM1MzEsImV4cCI6MjA4NzUzOTUzMX0.UTFUvtMKkyIIdJrc0GewWyTzAtONymUqZo_jJtT2ONI'
+    );
+
     // ── STRIPE SETUP ──
     const stripe = Stripe('pk_test_7Kh52Z9L5mgEoE2rpqmImXNx');
     const elements = stripe.elements({
@@ -574,8 +582,6 @@
       document.getElementById('card-error').textContent = '';
 
       try {
-        // In production this PaymentIntent would be created server-side
-        // For MVP demo we simulate the flow with Stripe test tokens
         const { paymentMethod, error } = await stripe.createPaymentMethod({
           type: 'card',
           card: cardElement,
@@ -589,16 +595,34 @@
           return;
         }
 
-        // Payment method created successfully — simulate confirmation
-        // In production: send paymentMethod.id to your backend to confirm PaymentIntent
-        console.log('Payment method created:', paymentMethod.id);
-
         // Generate booking reference
         const ref = 'NC-' + Math.random().toString(36).substr(2, 6).toUpperCase();
+
+        // Save booking to Supabase
+        const { data: { session } } = await sb.auth.getSession();
+        if (session) {
+          const totalAmount = 0.35;
+          const platformFee = parseFloat((totalAmount * 0.20).toFixed(2));
+          const hostPayout = parseFloat((totalAmount * 0.80).toFixed(2));
+
+          await sb.from('bookings').insert({
+            driver_id: session.user.id,
+            listing_id: null, // Will be real listing ID when map is fully wired
+            booking_date: new Date().toISOString().split('T')[0],
+            time_slot: '09:00',
+            duration_hours: 1,
+            total_amount: totalAmount,
+            platform_fee: platformFee,
+            host_payout: hostPayout,
+            status: 'confirmed',
+            stripe_payment_id: paymentMethod.id,
+            reference: ref
+          });
+        }
+
         document.getElementById('booking-ref').textContent = ref;
         document.getElementById('success-time').textContent = '09:00 – 10:00';
 
-        // Show success screen
         setTimeout(() => {
           document.getElementById('screen-payment').classList.remove('active');
           document.getElementById('screen-success').classList.add('active');
@@ -606,6 +630,7 @@
         }, 800);
 
       } catch (err) {
+        console.error(err);
         document.getElementById('card-error').textContent = 'Something went wrong. Please try again.';
         btn.disabled = false;
         btn.classList.remove('loading');
