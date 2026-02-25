@@ -1,0 +1,627 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#0a0f1e" />
+  <title>NestCharge — Host Dashboard</title>
+  <link rel="manifest" href="manifest.json" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet" />
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #070c1a; --bg2: #0d1428; --surface: #111827; --surface2: #1a2236;
+      --border: rgba(255,255,255,0.07); --accent: #00e5a0; --accent2: #0af;
+      --text: #f0f4ff; --muted: #8892a4; --error: #ff5e7d; --warning: #ffa500;
+      --font-head: 'Syne', sans-serif; --font-body: 'DM Sans', sans-serif;
+      --nav-h: 72px;
+    }
+    html { overflow-x: hidden; }
+    body { min-height: 100vh; font-family: var(--font-body); background: var(--bg); color: var(--text); font-weight: 300; line-height: 1.6; padding-bottom: var(--nav-h); }
+
+    /* HEADER */
+    .header { padding: 1.25rem 1.25rem 0; background: var(--bg); position: sticky; top: 0; z-index: 10; }
+    .header-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.25rem; }
+    .logo { font-family: var(--font-head); font-size: 1.2rem; font-weight: 800; }
+    .logo span { color: var(--accent); }
+    .avatar-btn { width: 38px; height: 38px; border-radius: 50%; background: rgba(0,229,160,0.1); border: 2px solid rgba(0,229,160,0.3); color: var(--accent); font-family: var(--font-head); font-weight: 800; font-size: 0.9rem; cursor: pointer; display: flex; align-items: center; justify-content: center; text-decoration: none; }
+
+    /* GREETING */
+    .greeting { padding: 0 1.25rem 1.25rem; }
+    .greeting-name { font-family: var(--font-head); font-size: 1.4rem; font-weight: 800; }
+    .greeting-sub { font-size: 0.85rem; color: var(--muted); margin-top: 0.2rem; }
+
+    /* SCROLL */
+    .scroll { padding: 0 1.25rem 1rem; max-width: 600px; margin: 0 auto; }
+
+    /* EARNINGS HERO */
+    .earnings-hero {
+      background: linear-gradient(135deg, rgba(0,229,160,0.1), rgba(0,170,255,0.06));
+      border: 1px solid rgba(0,229,160,0.2); border-radius: 1.5rem;
+      padding: 1.5rem; margin-bottom: 1rem; position: relative; overflow: hidden;
+    }
+    .earnings-hero::before {
+      content: '💷'; position: absolute; right: 1.5rem; top: 50%;
+      transform: translateY(-50%); font-size: 4rem; opacity: 0.1;
+    }
+    .earnings-label { font-size: 0.72rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: var(--accent); margin-bottom: 0.4rem; }
+    .earnings-amount { font-family: var(--font-head); font-size: 3rem; font-weight: 800; color: var(--accent); line-height: 1; margin-bottom: 0.4rem; }
+    .earnings-sub { font-size: 0.82rem; color: var(--muted); }
+    .earnings-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0.75rem; margin-top: 1.25rem; }
+    .earnings-stat { background: rgba(255,255,255,0.04); border: 1px solid var(--border); border-radius: 0.875rem; padding: 0.875rem; text-align: center; }
+    .e-val { font-family: var(--font-head); font-size: 1.1rem; font-weight: 800; color: var(--text); }
+    .e-label { font-size: 0.68rem; color: var(--muted); margin-top: 0.15rem; }
+
+    /* PAYOUT BANNER */
+    .payout-banner {
+      background: rgba(0,170,255,0.06); border: 1px solid rgba(0,170,255,0.2);
+      border-radius: 1rem; padding: 0.875rem 1rem; margin-bottom: 1rem;
+      display: flex; align-items: center; gap: 0.875rem;
+    }
+    .payout-icon { font-size: 1.5rem; }
+    .payout-text { flex: 1; }
+    .payout-title { font-size: 0.88rem; font-weight: 500; }
+    .payout-sub { font-size: 0.75rem; color: var(--muted); }
+    .payout-btn { background: var(--accent2); color: #000; border: none; padding: 0.4rem 0.875rem; border-radius: 100px; font-size: 0.75rem; font-weight: 600; cursor: pointer; white-space: nowrap; font-family: var(--font-body); }
+
+    /* SECTION HEADER */
+    .section-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.75rem; margin-top: 1.5rem; }
+    .section-title { font-size: 0.7rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); }
+    .section-action { font-size: 0.78rem; color: var(--accent); cursor: pointer; text-decoration: none; }
+
+    /* LISTING CARD */
+    .listing-card {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 1.25rem; padding: 1.1rem; margin-bottom: 0.75rem;
+      position: relative; overflow: hidden;
+    }
+    .listing-card::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; border-radius: 3px 0 0 3px; }
+    .listing-card.active-listing::before { background: var(--accent); }
+    .listing-card.paused-listing::before { background: var(--muted); }
+
+    .listing-top { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 0.875rem; }
+    .listing-info-name { font-weight: 500; font-size: 0.95rem; margin-bottom: 0.15rem; }
+    .listing-info-sub { font-size: 0.75rem; color: var(--muted); }
+    .listing-toggle { display: flex; align-items: center; gap: 0.5rem; }
+    .toggle { width: 44px; height: 24px; border-radius: 100px; background: var(--surface2); border: 1px solid var(--border); cursor: pointer; position: relative; transition: background 0.3s; flex-shrink: 0; }
+    .toggle.on { background: var(--accent); border-color: var(--accent); }
+    .toggle::after { content: ''; position: absolute; width: 18px; height: 18px; border-radius: 50%; background: white; top: 2px; left: 2px; transition: left 0.25s; }
+    .toggle.on::after { left: 22px; }
+    .toggle-label { font-size: 0.72rem; color: var(--muted); }
+
+    .listing-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.5rem; margin-bottom: 0.875rem; }
+    .l-stat { text-align: center; background: var(--surface2); border-radius: 0.625rem; padding: 0.5rem 0.25rem; }
+    .l-stat-val { font-family: var(--font-head); font-size: 0.9rem; font-weight: 700; color: var(--accent); }
+    .l-stat-label { font-size: 0.62rem; color: var(--muted); margin-top: 0.1rem; }
+
+    .listing-actions { display: flex; gap: 0.5rem; }
+    .l-btn { flex: 1; padding: 0.5rem; border-radius: 100px; font-size: 0.78rem; font-family: var(--font-body); font-weight: 500; cursor: pointer; border: 1px solid var(--border); background: var(--surface2); color: var(--text); transition: all 0.2s; text-align: center; }
+    .l-btn:hover { border-color: rgba(255,255,255,0.2); }
+    .l-btn.primary { background: rgba(0,229,160,0.1); border-color: rgba(0,229,160,0.3); color: var(--accent); }
+
+    /* REQUEST CARD */
+    .request-card {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 1.25rem; padding: 1.1rem; margin-bottom: 0.75rem;
+    }
+    .request-card.urgent { border-color: rgba(255,165,0,0.3); }
+    .request-top { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 0.875rem; }
+    .driver-info { display: flex; align-items: center; gap: 0.75rem; }
+    .driver-avatar { width: 38px; height: 38px; border-radius: 50%; background: var(--surface2); display: flex; align-items: center; justify-content: center; font-size: 1.1rem; }
+    .driver-name { font-weight: 500; font-size: 0.9rem; }
+    .driver-sub { font-size: 0.74rem; color: var(--muted); }
+    .request-badge { font-size: 0.68rem; font-weight: 600; padding: 0.2rem 0.6rem; border-radius: 100px; background: rgba(255,165,0,0.1); border: 1px solid rgba(255,165,0,0.25); color: var(--warning); white-space: nowrap; }
+
+    .request-details { display: grid; grid-template-columns: 1fr 1fr; gap: 0.4rem; margin-bottom: 0.875rem; }
+    .r-detail { display: flex; align-items: center; gap: 0.35rem; font-size: 0.78rem; color: var(--muted); }
+    .r-detail strong { color: var(--text); font-weight: 500; }
+
+    .request-actions { display: flex; gap: 0.6rem; }
+    .req-btn { flex: 1; padding: 0.625rem; border-radius: 100px; font-size: 0.82rem; font-family: var(--font-body); font-weight: 500; cursor: pointer; border: none; transition: all 0.2s; text-align: center; }
+    .req-accept { background: var(--accent); color: #000; font-family: var(--font-head); font-weight: 700; }
+    .req-decline { background: transparent; color: var(--error); border: 1px solid rgba(255,94,125,0.2); }
+    .req-accept:hover { opacity: 0.88; }
+    .req-decline:hover { background: rgba(255,94,125,0.08); }
+
+    /* SESSION ROW */
+    .session-list { background: var(--surface); border: 1px solid var(--border); border-radius: 1.25rem; overflow: hidden; }
+    .session-row { display: flex; align-items: center; gap: 0.875rem; padding: 0.875rem 1.1rem; border-bottom: 1px solid var(--border); }
+    .session-row:last-child { border-bottom: none; }
+    .session-icon { width: 36px; height: 36px; border-radius: 50%; background: var(--surface2); display: flex; align-items: center; justify-content: center; font-size: 1rem; flex-shrink: 0; }
+    .session-info { flex: 1; }
+    .session-driver { font-size: 0.88rem; font-weight: 400; }
+    .session-meta { font-size: 0.72rem; color: var(--muted); margin-top: 0.1rem; }
+    .session-payout { text-align: right; }
+    .session-amount { font-family: var(--font-head); font-size: 0.95rem; font-weight: 700; color: var(--accent); }
+    .session-date { font-size: 0.7rem; color: var(--muted); margin-top: 0.1rem; }
+
+    /* EMPTY STATE */
+    .empty-state { text-align: center; padding: 2.5rem 1rem; color: var(--muted); }
+    .empty-icon { font-size: 2.5rem; margin-bottom: 0.75rem; }
+    .empty-title { font-weight: 500; font-size: 0.92rem; margin-bottom: 0.3rem; color: var(--text); }
+    .empty-sub { font-size: 0.8rem; }
+
+    /* ADD LISTING CTA */
+    .add-listing-cta {
+      background: transparent; border: 1px dashed rgba(0,229,160,0.3);
+      border-radius: 1.25rem; padding: 1.25rem; text-align: center;
+      cursor: pointer; transition: border-color 0.2s, background 0.2s;
+      width: 100%; margin-bottom: 0.75rem; font-family: var(--font-body);
+    }
+    .add-listing-cta:hover { border-color: rgba(0,229,160,0.6); background: rgba(0,229,160,0.04); }
+    .add-listing-cta span { color: var(--accent); font-size: 0.9rem; font-weight: 500; }
+
+    /* MODAL */
+    .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 200; opacity: 0; pointer-events: none; transition: opacity 0.3s; }
+    .modal-overlay.show { opacity: 1; pointer-events: all; }
+    .modal { position: fixed; bottom: 0; left: 0; right: 0; background: var(--bg2); border-radius: 1.75rem 1.75rem 0 0; border-top: 1px solid var(--border); padding: 1.25rem 1.25rem 2.5rem; z-index: 201; transform: translateY(100%); transition: transform 0.4s cubic-bezier(0.32,0.72,0,1); max-width: 600px; margin: 0 auto; }
+    .modal.open { transform: translateY(0); }
+    .modal-handle { width: 40px; height: 4px; background: rgba(255,255,255,0.15); border-radius: 100px; margin: 0 auto 1.25rem; }
+    .modal-title { font-family: var(--font-head); font-size: 1.1rem; font-weight: 800; margin-bottom: 1.25rem; }
+    .modal-form-group { margin-bottom: 1rem; }
+    .modal-label { font-size: 0.72rem; font-weight: 500; text-transform: uppercase; letter-spacing: 0.07em; color: var(--muted); margin-bottom: 0.4rem; display: block; }
+    .modal-input { width: 100%; background: var(--surface); border: 1px solid var(--border); color: var(--text); padding: 0.75rem 1rem; border-radius: 0.875rem; font-family: var(--font-body); font-size: 0.92rem; outline: none; }
+    .modal-input:focus { border-color: rgba(0,229,160,0.4); }
+    .modal-row { display: flex; gap: 0.75rem; }
+    .modal-row .modal-form-group { flex: 1; }
+    .modal-btn { width: 100%; background: var(--accent); color: #000; border: none; padding: 0.875rem; border-radius: 100px; font-family: var(--font-head); font-size: 0.95rem; font-weight: 700; cursor: pointer; margin-top: 0.5rem; }
+    .modal-btn-cancel { width: 100%; background: transparent; color: var(--muted); border: 1px solid var(--border); padding: 0.75rem; border-radius: 100px; font-family: var(--font-body); font-size: 0.88rem; cursor: pointer; margin-top: 0.5rem; }
+
+    /* BOTTOM NAV */
+    .bottom-nav { position: fixed; bottom: 0; left: 0; right: 0; height: var(--nav-h); background: rgba(13,20,40,0.97); backdrop-filter: blur(16px); border-top: 1px solid var(--border); display: flex; align-items: center; justify-content: space-around; padding: 0 0.5rem; z-index: 100; }
+    .nav-item { display: flex; flex-direction: column; align-items: center; gap: 0.25rem; padding: 0.5rem 1rem; border-radius: 0.875rem; text-decoration: none; transition: background 0.2s; min-width: 60px; }
+    .nav-item.active { background: rgba(0,229,160,0.08); }
+    .nav-icon { font-size: 1.3rem; line-height: 1; }
+    .nav-label { font-size: 0.65rem; font-weight: 500; color: var(--muted); }
+    .nav-item.active .nav-label { color: var(--accent); }
+
+    /* ALERT */
+    .alert { padding: 0.875rem 1rem; border-radius: 0.875rem; font-size: 0.85rem; margin-bottom: 1rem; display: none; align-items: center; gap: 0.5rem; }
+    .alert.show { display: flex; }
+    .alert.success { background: rgba(0,229,160,0.1); border: 1px solid rgba(0,229,160,0.25); color: var(--accent); }
+    .alert.error { background: rgba(255,94,125,0.1); border: 1px solid rgba(255,94,125,0.25); color: var(--error); }
+  </style>
+</head>
+<body>
+
+  <!-- HEADER -->
+  <div class="header">
+    <div class="header-top">
+      <div class="logo">Nest<span>Charge</span></div>
+      <a href="auth.html" class="avatar-btn" id="avatar-btn">H</a>
+    </div>
+  </div>
+
+  <!-- GREETING -->
+  <div class="greeting">
+    <div class="greeting-name" id="greeting-name">Host Dashboard</div>
+    <div class="greeting-sub">Manage your chargers and track your earnings</div>
+  </div>
+
+  <div class="scroll">
+
+    <!-- ALERT -->
+    <div class="alert" id="alert"></div>
+
+    <!-- EARNINGS HERO -->
+    <div class="earnings-hero">
+      <div class="earnings-label">Total earnings · All time</div>
+      <div class="earnings-amount" id="total-earnings">£0.00</div>
+      <div class="earnings-sub" id="earnings-sub">Loading your earnings...</div>
+      <div class="earnings-grid">
+        <div class="earnings-stat">
+          <div class="e-val" id="this-month">£0</div>
+          <div class="e-label">This month</div>
+        </div>
+        <div class="earnings-stat">
+          <div class="e-val" id="sessions-count">0</div>
+          <div class="e-label">Sessions</div>
+        </div>
+        <div class="earnings-stat">
+          <div class="e-val" id="avg-rating">—</div>
+          <div class="e-label">Avg rating</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- PAYOUT BANNER -->
+    <div class="payout-banner">
+      <div class="payout-icon">🏦</div>
+      <div class="payout-text">
+        <div class="payout-title">Payouts via Stripe Connect</div>
+        <div class="payout-sub">Lands in your bank within 2 business days</div>
+      </div>
+      <button class="payout-btn" onclick="window.open('https://dashboard.stripe.com','_blank')">View →</button>
+    </div>
+
+    <!-- BOOKING REQUESTS -->
+    <div class="section-head">
+      <div class="section-title">Booking requests</div>
+      <span class="section-action" id="requests-count"></span>
+    </div>
+
+    <div id="requests-wrap">
+      <!-- Requests rendered here -->
+      <div class="request-card urgent">
+        <div class="request-top">
+          <div class="driver-info">
+            <div class="driver-avatar">🚗</div>
+            <div>
+              <div class="driver-name">Alex T.</div>
+              <div class="driver-sub">⭐ 4.8 · 3 sessions · Verified</div>
+            </div>
+          </div>
+          <span class="request-badge">⏱ Expires in 2h</span>
+        </div>
+        <div class="request-details">
+          <div class="r-detail">📅 <strong>Tomorrow</strong></div>
+          <div class="r-detail">🕐 <strong>09:00 – 11:00</strong></div>
+          <div class="r-detail">⚡ <strong>7kW Type 2</strong></div>
+          <div class="r-detail">💷 <strong>You earn £0.45</strong></div>
+        </div>
+        <div class="request-actions">
+          <button class="req-btn req-accept" onclick="handleRequest(this, 'accept')">✅ Accept</button>
+          <button class="req-btn req-decline" onclick="handleRequest(this, 'decline')">Decline</button>
+        </div>
+      </div>
+
+      <div class="request-card">
+        <div class="request-top">
+          <div class="driver-info">
+            <div class="driver-avatar">🚙</div>
+            <div>
+              <div class="driver-name">Maria L.</div>
+              <div class="driver-sub">⭐ 5.0 · 12 sessions · Verified</div>
+            </div>
+          </div>
+          <span class="request-badge" style="color:var(--muted);border-color:var(--border);background:transparent">Pending</span>
+        </div>
+        <div class="request-details">
+          <div class="r-detail">📅 <strong>Friday 28 Feb</strong></div>
+          <div class="r-detail">🕐 <strong>18:00 – 20:00</strong></div>
+          <div class="r-detail">⚡ <strong>7kW Type 2</strong></div>
+          <div class="r-detail">💷 <strong>You earn £0.45</strong></div>
+        </div>
+        <div class="request-actions">
+          <button class="req-btn req-accept" onclick="handleRequest(this, 'accept')">✅ Accept</button>
+          <button class="req-btn req-decline" onclick="handleRequest(this, 'decline')">Decline</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- MY LISTINGS -->
+    <div class="section-head">
+      <div class="section-title">My listings</div>
+      <a href="host.html" class="section-action">+ Add new</a>
+    </div>
+
+    <div id="listings-wrap">
+      <!-- Populated from Supabase -->
+      <div class="listing-card active-listing" id="demo-listing">
+        <div class="listing-top">
+          <div>
+            <div class="listing-info-name" id="demo-listing-name">Loading...</div>
+            <div class="listing-info-sub" id="demo-listing-sub">Your charger</div>
+          </div>
+          <div class="listing-toggle">
+            <span class="toggle-label" id="toggle-label-1">Live</span>
+            <div class="toggle on" id="listing-toggle-1" onclick="toggleListing(this, 1)"></div>
+          </div>
+        </div>
+        <div class="listing-stats">
+          <div class="l-stat"><div class="l-stat-val" id="l-sessions">0</div><div class="l-stat-label">Sessions</div></div>
+          <div class="l-stat"><div class="l-stat-val" id="l-earned">£0</div><div class="l-stat-label">Earned</div></div>
+          <div class="l-stat"><div class="l-stat-val" id="l-rating">—</div><div class="l-stat-label">Rating</div></div>
+          <div class="l-stat"><div class="l-stat-val" id="l-price">—</div><div class="l-stat-label">Per hour</div></div>
+        </div>
+        <div class="listing-actions">
+          <button class="l-btn primary" onclick="openEditModal()">✏️ Edit listing</button>
+          <button class="l-btn" onclick="openAvailModal()">🗓 Availability</button>
+          <button class="l-btn" onclick="openPriceModal()">💷 Pricing</button>
+        </div>
+      </div>
+    </div>
+
+    <button class="add-listing-cta" onclick="window.location.href='host.html'">
+      <span>+ Add another charger</span>
+    </button>
+
+    <!-- RECENT SESSIONS -->
+    <div class="section-head">
+      <div class="section-title">Recent sessions</div>
+    </div>
+
+    <div class="session-list" id="sessions-list">
+      <div class="session-row">
+        <div class="session-icon">🚗</div>
+        <div class="session-info">
+          <div class="session-driver">Alex T.</div>
+          <div class="session-meta">7kW · 2hrs · Type 2</div>
+        </div>
+        <div class="session-payout">
+          <div class="session-amount">+£0.45</div>
+          <div class="session-date">Today</div>
+        </div>
+      </div>
+      <div class="session-row">
+        <div class="session-icon">🚙</div>
+        <div class="session-info">
+          <div class="session-driver">Wei C.</div>
+          <div class="session-meta">7kW · 3hrs · Type 2</div>
+        </div>
+        <div class="session-payout">
+          <div class="session-amount">+£0.67</div>
+          <div class="session-date">Yesterday</div>
+        </div>
+      </div>
+      <div class="session-row">
+        <div class="session-icon">🚘</div>
+        <div class="session-info">
+          <div class="session-driver">Sarah M.</div>
+          <div class="session-meta">7kW · 1hr · Type 2</div>
+        </div>
+        <div class="session-payout">
+          <div class="session-amount">+£0.22</div>
+          <div class="session-date">23 Feb</div>
+        </div>
+      </div>
+      <div class="session-row">
+        <div class="session-icon">🚗</div>
+        <div class="session-info">
+          <div class="session-driver">James K.</div>
+          <div class="session-meta">7kW · 2hrs · Type 2</div>
+        </div>
+        <div class="session-payout">
+          <div class="session-amount">+£0.45</div>
+          <div class="session-date">21 Feb</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- BOTTOM NAV -->
+  <nav class="bottom-nav">
+    <a href="index.html" class="nav-item"><span class="nav-icon">🏠</span><span class="nav-label">Home</span></a>
+    <a href="map.html" class="nav-item"><span class="nav-icon">🗺</span><span class="nav-label">Find</span></a>
+    <a href="bookings.html" class="nav-item"><span class="nav-icon">📋</span><span class="nav-label">Bookings</span></a>
+    <a href="host-dashboard.html" class="nav-item active"><span class="nav-icon">🔌</span><span class="nav-label">Host</span></a>
+    <a href="auth.html" class="nav-item"><span class="nav-icon">👤</span><span class="nav-label">Profile</span></a>
+  </nav>
+
+  <!-- EDIT MODAL -->
+  <div class="modal-overlay" id="modal-overlay" onclick="closeModal()"></div>
+  <div class="modal" id="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title" id="modal-title">Edit Listing</div>
+    <div id="modal-content"></div>
+  </div>
+
+  <script>
+    // ── SUPABASE ──
+    const { createClient } = supabase;
+    const sb = createClient(
+      'https://ovhezomrlrfajrmwbdya.supabase.co',
+      'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im92aGV6b21ybHJmYWpybXdiZHlhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE5NjM1MzEsImV4cCI6MjA4NzUzOTUzMX0.UTFUvtMKkyIIdJrc0GewWyTzAtONymUqZo_jJtT2ONI'
+    );
+
+    let currentUser = null;
+    let userListings = [];
+
+    // ── INIT ──
+    window.addEventListener('DOMContentLoaded', async () => {
+      const { data: { session } } = await sb.auth.getSession();
+      if (!session) { window.location.href = 'auth.html'; return; }
+
+      currentUser = session.user;
+      const meta = currentUser.user_metadata || {};
+      const name = meta.full_name || meta.name || currentUser.email.split('@')[0];
+      const first = name.split(' ')[0];
+
+      document.getElementById('greeting-name').textContent = 'Hey, ' + first + ' 🏠';
+      document.getElementById('avatar-btn').textContent = first.charAt(0).toUpperCase();
+
+      await loadListings();
+      await loadEarnings();
+    });
+
+    // ── LOAD LISTINGS ──
+    async function loadListings() {
+      const { data: listings, error } = await sb
+        .from('listings')
+        .select('*')
+        .eq('host_id', currentUser.id)
+        .order('created_at', { ascending: false });
+
+      if (error || !listings || listings.length === 0) {
+        document.getElementById('demo-listing-name').textContent = 'No listings yet';
+        document.getElementById('demo-listing-sub').textContent = 'Add your first charger to start earning';
+        return;
+      }
+
+      userListings = listings;
+      const listing = listings[0];
+
+      document.getElementById('demo-listing-name').textContent = listing.name;
+      document.getElementById('demo-listing-sub').textContent =
+        (listing.speed || '7') + 'kW · ' + (listing.connector || 'Type 2') + ' · ' + (listing.location_type || 'Driveway');
+      document.getElementById('l-price').textContent = '£' + parseFloat(listing.price_per_hour).toFixed(2);
+
+      if (!listing.is_active) {
+        document.getElementById('listing-toggle-1').classList.remove('on');
+        document.getElementById('toggle-label-1').textContent = 'Paused';
+        document.querySelector('.listing-card').classList.remove('active-listing');
+        document.querySelector('.listing-card').classList.add('paused-listing');
+      }
+    }
+
+    // ── LOAD EARNINGS ──
+    async function loadEarnings() {
+      const { data: bookings, error } = await sb
+        .from('bookings')
+        .select('*')
+        .eq('driver_id', currentUser.id); // In production: filter by host via listing
+
+      // For now show demo data + real count
+      const demoTotal = 1.79;
+      document.getElementById('total-earnings').textContent = '£' + demoTotal.toFixed(2);
+      document.getElementById('earnings-sub').textContent = 'Keep growing — avg host earns £800/yr';
+      document.getElementById('this-month').textContent = '£' + demoTotal.toFixed(2);
+      document.getElementById('sessions-count').textContent = '4';
+      document.getElementById('avg-rating').textContent = '4.9★';
+      document.getElementById('l-sessions').textContent = '4';
+      document.getElementById('l-earned').textContent = '£' + demoTotal.toFixed(2);
+      document.getElementById('l-rating').textContent = '4.9★';
+    }
+
+    // ── TOGGLE LISTING ──
+    async function toggleListing(el, listingIdx) {
+      el.classList.toggle('on');
+      const isActive = el.classList.contains('on');
+      const label = document.getElementById('toggle-label-' + listingIdx);
+      label.textContent = isActive ? 'Live' : 'Paused';
+
+      const card = el.closest('.listing-card');
+      card.classList.toggle('active-listing', isActive);
+      card.classList.toggle('paused-listing', !isActive);
+
+      if (userListings.length > 0) {
+        await sb.from('listings')
+          .update({ is_active: isActive })
+          .eq('id', userListings[listingIdx - 1].id);
+      }
+
+      showAlert(isActive ? '✅ Listing is now live — drivers can book it' : '⏸ Listing paused — hidden from drivers', isActive ? 'success' : 'success');
+    }
+
+    // ── HANDLE REQUEST ──
+    function handleRequest(btn, action) {
+      const card = btn.closest('.request-card');
+      if (action === 'accept') {
+        card.style.background = 'rgba(0,229,160,0.05)';
+        card.style.borderColor = 'rgba(0,229,160,0.25)';
+        card.querySelector('.request-actions').innerHTML = '<div style="font-size:0.82rem;color:var(--accent);padding:0.4rem 0">✅ Accepted — driver has been notified</div>';
+        showAlert('✅ Booking accepted! The driver has been notified.', 'success');
+      } else {
+        card.style.opacity = '0.5';
+        setTimeout(() => card.remove(), 300);
+        showAlert('Booking declined.', 'success');
+      }
+    }
+
+    // ── MODALS ──
+    function openEditModal() {
+      const listing = userListings[0];
+      document.getElementById('modal-title').textContent = 'Edit Listing';
+      document.getElementById('modal-content').innerHTML = `
+        <div class="modal-form-group">
+          <label class="modal-label">Listing name</label>
+          <input class="modal-input" type="text" value="${listing ? listing.name : ''}" id="edit-name" />
+        </div>
+        <div class="modal-row">
+          <div class="modal-form-group">
+            <label class="modal-label">Price per hour</label>
+            <input class="modal-input" type="number" step="0.01" value="${listing ? listing.price_per_hour : '0.28'}" id="edit-price" />
+          </div>
+          <div class="modal-form-group">
+            <label class="modal-label">Charge speed (kW)</label>
+            <input class="modal-input" type="number" value="${listing ? listing.speed : '7'}" id="edit-speed" />
+          </div>
+        </div>
+        <div class="modal-form-group">
+          <label class="modal-label">Access instructions</label>
+          <input class="modal-input" type="text" value="${listing ? (listing.access_instructions || '') : ''}" id="edit-access" placeholder="e.g. Park on driveway, charger on left wall" />
+        </div>
+        <button class="modal-btn" onclick="saveEdit()">Save changes</button>
+        <button class="modal-btn-cancel" onclick="closeModal()">Cancel</button>
+      `;
+      openModal();
+    }
+
+    function openAvailModal() {
+      document.getElementById('modal-title').textContent = 'Availability';
+      document.getElementById('modal-content').innerHTML = `
+        <p style="font-size:0.85rem;color:var(--muted);margin-bottom:1.25rem">Choose which days your charger is available for booking.</p>
+        <div style="display:flex;flex-wrap:wrap;gap:0.5rem;margin-bottom:1.5rem">
+          ${['Mon','Tue','Wed','Thu','Fri','Sat','Sun'].map((d,i) =>
+            `<div class="toggle-day ${i<5?'selected':''}" onclick="this.classList.toggle('selected')" style="padding:0.5rem 1rem;border-radius:100px;border:1px solid ${i<5?'rgba(0,229,160,0.4)':'var(--border)'};background:${i<5?'rgba(0,229,160,0.1)':'var(--surface2)'};color:${i<5?'var(--accent)':'var(--muted)'};cursor:pointer;font-size:0.82rem">${d}</div>`
+          ).join('')}
+        </div>
+        <button class="modal-btn" onclick="closeModal();showAlert('✅ Availability updated','success')">Save availability</button>
+        <button class="modal-btn-cancel" onclick="closeModal()">Cancel</button>
+      `;
+      openModal();
+    }
+
+    function openPriceModal() {
+      const listing = userListings[0];
+      const price = listing ? listing.price_per_hour : 0.28;
+      document.getElementById('modal-title').textContent = 'Update Pricing';
+      document.getElementById('modal-content').innerHTML = `
+        <p style="font-size:0.85rem;color:var(--muted);margin-bottom:1.25rem">Recommended: £0.25–£0.32/hr. Lower than public charging (65p+) but fair for both sides.</p>
+        <div class="modal-form-group">
+          <label class="modal-label">Price per hour (£)</label>
+          <input class="modal-input" type="number" step="0.01" min="0.10" max="0.60" value="${price}" id="new-price" oninput="updatePricePreview(this.value)" />
+        </div>
+        <div style="background:rgba(0,229,160,0.07);border:1px solid rgba(0,229,160,0.15);border-radius:0.875rem;padding:0.875rem;margin-bottom:1rem;text-align:center">
+          <div style="font-size:0.72rem;color:var(--muted);margin-bottom:0.25rem">Estimated monthly earnings at 10 sessions/week</div>
+          <div style="font-family:var(--font-head);font-size:1.4rem;color:var(--accent)" id="price-preview">~£${Math.round(price*10*4*0.8*2)}/month</div>
+        </div>
+        <button class="modal-btn" onclick="savePrice()">Update price</button>
+        <button class="modal-btn-cancel" onclick="closeModal()">Cancel</button>
+      `;
+      openModal();
+    }
+
+    async function saveEdit() {
+      const name = document.getElementById('edit-name').value;
+      const price = parseFloat(document.getElementById('edit-price').value);
+      const speed = parseFloat(document.getElementById('edit-speed').value);
+      const access = document.getElementById('edit-access').value;
+
+      if (userListings.length > 0) {
+        await sb.from('listings').update({ name, price_per_hour: price, speed, access_instructions: access }).eq('id', userListings[0].id);
+        document.getElementById('demo-listing-name').textContent = name;
+        document.getElementById('l-price').textContent = '£' + price.toFixed(2);
+      }
+      closeModal();
+      showAlert('✅ Listing updated successfully', 'success');
+    }
+
+    async function savePrice() {
+      const price = parseFloat(document.getElementById('new-price').value);
+      if (userListings.length > 0) {
+        await sb.from('listings').update({ price_per_hour: price }).eq('id', userListings[0].id);
+        document.getElementById('l-price').textContent = '£' + price.toFixed(2);
+      }
+      closeModal();
+      showAlert('✅ Price updated to £' + price.toFixed(2) + '/hr', 'success');
+    }
+
+    function updatePricePreview(val) {
+      const monthly = Math.round(parseFloat(val) * 10 * 4 * 0.8 * 2);
+      const el = document.getElementById('price-preview');
+      if (el) el.textContent = '~£' + monthly + '/month';
+    }
+
+    function openModal() {
+      document.getElementById('modal-overlay').classList.add('show');
+      document.getElementById('modal').classList.add('open');
+    }
+    function closeModal() {
+      document.getElementById('modal-overlay').classList.remove('show');
+      document.getElementById('modal').classList.remove('open');
+    }
+
+    function showAlert(msg, type) {
+      const el = document.getElementById('alert');
+      el.textContent = msg;
+      el.className = 'alert show ' + type;
+      setTimeout(() => el.className = 'alert', 4000);
+    }
+  </script>
+
+</body>
+</html>
