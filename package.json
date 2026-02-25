@@ -1,7 +1,6 @@
 {
   "name": "nestcharge",
   "version": "1.0.0",
-  "description": "NestCharge — Peer-to-peer EV charging PWA",
   "dependencies": {
     "web-push": "^3.6.7"
   },
