@@ -1,0 +1,605 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#0a0f1e" />
+  <title>NestCharge — Reviews</title>
+  <link rel="manifest" href="manifest.json" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet" />
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #070c1a; --bg2: #0d1428; --surface: #111827; --surface2: #1a2236;
+      --border: rgba(255,255,255,0.07); --accent: #00e5a0; --accent2: #0af;
+      --text: #f0f4ff; --muted: #8892a4; --error: #ff5e7d; --star: #ffc107;
+      --font-head: 'Syne', sans-serif; --font-body: 'DM Sans', sans-serif;
+      --nav-h: 72px;
+    }
+    html { overflow-x: hidden; }
+    body { min-height: 100vh; font-family: var(--font-body); background: var(--bg); color: var(--text); font-weight: 300; line-height: 1.6; padding-bottom: var(--nav-h); }
+
+    /* TOP BAR */
+    .topbar { display: flex; align-items: center; gap: 1rem; padding: 1.25rem 1.25rem 0; position: sticky; top: 0; background: var(--bg); z-index: 10; }
+    .back-btn { width: 38px; height: 38px; border-radius: 50%; background: var(--surface); border: 1px solid var(--border); color: var(--text); font-size: 1rem; cursor: pointer; display: flex; align-items: center; justify-content: center; text-decoration: none; flex-shrink: 0; }
+    .logo { font-family: var(--font-head); font-size: 1.1rem; font-weight: 800; }
+    .logo span { color: var(--accent); }
+
+    /* MAIN */
+    .main { max-width: 500px; margin: 0 auto; padding: 1.5rem 1.25rem 2rem; }
+
+    /* SCREENS */
+    .screen { display: none; animation: fadeUp 0.3s ease; }
+    .screen.active { display: block; }
+    @keyframes fadeUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+
+    /* ── LEAVE REVIEW SCREEN ── */
+    .booking-summary {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 1.25rem; padding: 1.1rem; margin-bottom: 1.5rem;
+      display: flex; align-items: center; gap: 1rem;
+    }
+    .bs-icon { width: 48px; height: 48px; border-radius: 50%; background: var(--surface2); display: flex; align-items: center; justify-content: center; font-size: 1.4rem; flex-shrink: 0; }
+    .bs-name { font-weight: 500; font-size: 0.95rem; margin-bottom: 0.15rem; }
+    .bs-meta { font-size: 0.75rem; color: var(--muted); }
+
+    /* STAR RATING */
+    .star-section { margin-bottom: 1.5rem; text-align: center; }
+    .star-label { font-size: 0.72rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); margin-bottom: 1rem; }
+    .stars { display: flex; justify-content: center; gap: 0.75rem; margin-bottom: 0.75rem; }
+    .star { font-size: 2.75rem; cursor: pointer; transition: transform 0.15s; filter: grayscale(1) opacity(0.4); }
+    .star:hover, .star.active { filter: none; transform: scale(1.15); }
+    .star-text { font-size: 0.85rem; color: var(--muted); min-height: 1.4em; transition: color 0.2s; }
+    .star-text.filled { color: var(--star); }
+
+    /* CATEGORY RATINGS */
+    .category-ratings { margin-bottom: 1.5rem; }
+    .cat-title { font-size: 0.72rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); margin-bottom: 0.875rem; }
+    .cat-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.75rem; }
+    .cat-name { font-size: 0.85rem; color: var(--text); }
+    .cat-stars { display: flex; gap: 0.25rem; }
+    .cat-star { font-size: 1.3rem; cursor: pointer; filter: grayscale(1) opacity(0.3); transition: filter 0.15s; }
+    .cat-star.active { filter: none; }
+
+    /* COMMENT */
+    .form-group { margin-bottom: 1.25rem; }
+    .form-label { font-size: 0.72rem; font-weight: 500; text-transform: uppercase; letter-spacing: 0.07em; color: var(--muted); margin-bottom: 0.45rem; display: block; }
+    .form-textarea { width: 100%; background: var(--surface); border: 1px solid var(--border); color: var(--text); padding: 0.875rem 1rem; border-radius: 0.875rem; font-family: var(--font-body); font-size: 0.92rem; outline: none; resize: vertical; min-height: 110px; transition: border-color 0.2s; }
+    .form-textarea::placeholder { color: var(--muted); }
+    .form-textarea:focus { border-color: rgba(0,229,160,0.4); }
+    .char-count { font-size: 0.72rem; color: var(--muted); text-align: right; margin-top: 0.3rem; }
+
+    /* TAGS */
+    .tags-wrap { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 1.5rem; }
+    .tag { padding: 0.35rem 0.875rem; border-radius: 100px; border: 1px solid var(--border); background: var(--surface); color: var(--muted); font-size: 0.78rem; cursor: pointer; transition: all 0.2s; user-select: none; }
+    .tag:hover { border-color: rgba(255,255,255,0.2); color: var(--text); }
+    .tag.selected { background: rgba(0,229,160,0.1); border-color: rgba(0,229,160,0.35); color: var(--accent); }
+
+    /* BUTTONS */
+    .btn-primary { width: 100%; background: var(--accent); color: #000; border: none; padding: 1rem; border-radius: 100px; font-family: var(--font-head); font-size: 1rem; font-weight: 700; cursor: pointer; transition: opacity 0.2s; display: flex; align-items: center; justify-content: center; gap: 0.5rem; }
+    .btn-primary:disabled { opacity: 0.4; cursor: not-allowed; }
+    .btn-primary:hover:not(:disabled) { opacity: 0.88; }
+    .btn-skip { width: 100%; background: transparent; color: var(--muted); border: none; padding: 0.75rem; font-family: var(--font-body); font-size: 0.88rem; cursor: pointer; margin-top: 0.5rem; }
+
+    /* SPINNER */
+    .spinner { width: 18px; height: 18px; border: 2px solid rgba(0,0,0,0.3); border-top-color: #000; border-radius: 50%; animation: spin 0.7s linear infinite; display: none; }
+    .btn-primary.loading .spinner { display: block; }
+    .btn-primary.loading .btn-text { display: none; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── SUCCESS SCREEN ── */
+    .success-wrap { text-align: center; padding: 2.5rem 0; }
+    .success-icon { width: 80px; height: 80px; border-radius: 50%; background: rgba(0,229,160,0.1); border: 2px solid rgba(0,229,160,0.25); display: flex; align-items: center; justify-content: center; font-size: 2.5rem; margin: 0 auto 1.25rem; animation: popIn 0.5s cubic-bezier(0.34,1.56,0.64,1) both; }
+    @keyframes popIn { from { transform: scale(0.5); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+    .success-title { font-family: var(--font-head); font-size: 1.6rem; font-weight: 800; margin-bottom: 0.5rem; }
+    .success-sub { color: var(--muted); font-size: 0.88rem; margin-bottom: 2rem; }
+    .review-display { background: var(--surface); border: 1px solid var(--border); border-radius: 1.25rem; padding: 1.25rem; margin-bottom: 2rem; text-align: left; }
+    .rd-stars { font-size: 1.3rem; margin-bottom: 0.5rem; letter-spacing: 0.1em; }
+    .rd-comment { font-size: 0.88rem; color: var(--text); line-height: 1.65; font-style: italic; }
+    .rd-meta { font-size: 0.75rem; color: var(--muted); margin-top: 0.5rem; }
+
+    /* ── HOST PROFILE SCREEN ── */
+    .host-profile-hero {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 1.5rem; padding: 1.5rem; margin-bottom: 1.25rem; text-align: center;
+    }
+    .host-avatar { width: 72px; height: 72px; border-radius: 50%; background: rgba(0,229,160,0.1); border: 2px solid rgba(0,229,160,0.25); display: flex; align-items: center; justify-content: center; font-size: 2rem; margin: 0 auto 0.875rem; }
+    .host-name { font-family: var(--font-head); font-size: 1.25rem; font-weight: 800; margin-bottom: 0.25rem; }
+    .host-since { font-size: 0.78rem; color: var(--muted); margin-bottom: 1rem; }
+    .host-badges { display: flex; gap: 0.5rem; justify-content: center; flex-wrap: wrap; margin-bottom: 1.25rem; }
+    .badge { display: inline-flex; align-items: center; gap: 0.3rem; background: var(--surface2); border: 1px solid var(--border); border-radius: 100px; padding: 0.25rem 0.75rem; font-size: 0.72rem; color: var(--muted); }
+    .badge.gold { background: rgba(255,193,7,0.08); border-color: rgba(255,193,7,0.2); color: var(--star); }
+    .badge.green { background: rgba(0,229,160,0.08); border-color: rgba(0,229,160,0.2); color: var(--accent); }
+
+    /* RATING SUMMARY */
+    .rating-summary { background: var(--surface); border: 1px solid var(--border); border-radius: 1.25rem; padding: 1.25rem; margin-bottom: 1rem; }
+    .rating-overview { display: flex; align-items: center; gap: 1.5rem; margin-bottom: 1.25rem; }
+    .rating-big { font-family: var(--font-head); font-size: 3.5rem; font-weight: 800; color: var(--accent); line-height: 1; }
+    .rating-right { flex: 1; }
+    .rating-stars-big { font-size: 1.2rem; letter-spacing: 0.05em; margin-bottom: 0.3rem; }
+    .rating-count { font-size: 0.78rem; color: var(--muted); }
+    .rating-bars { display: flex; flex-direction: column; gap: 0.4rem; }
+    .rating-bar-row { display: flex; align-items: center; gap: 0.625rem; }
+    .rating-bar-label { font-size: 0.72rem; color: var(--muted); min-width: 14px; }
+    .rating-bar-track { flex: 1; height: 5px; background: var(--surface2); border-radius: 100px; overflow: hidden; }
+    .rating-bar-fill { height: 100%; border-radius: 100px; background: var(--star); transition: width 0.6s ease; }
+    .rating-bar-count { font-size: 0.7rem; color: var(--muted); min-width: 18px; text-align: right; }
+
+    /* CATEGORY SUMMARY */
+    .cat-summary { display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; margin-top: 1rem; }
+    .cat-summary-item { background: var(--surface2); border-radius: 0.75rem; padding: 0.75rem; text-align: center; }
+    .cat-summary-val { font-family: var(--font-head); font-size: 1rem; font-weight: 700; color: var(--accent); }
+    .cat-summary-label { font-size: 0.68rem; color: var(--muted); margin-top: 0.1rem; }
+
+    /* REVIEW CARDS */
+    .review-card { background: var(--surface); border: 1px solid var(--border); border-radius: 1.25rem; padding: 1.1rem; margin-bottom: 0.75rem; }
+    .review-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 0.75rem; }
+    .reviewer { display: flex; align-items: center; gap: 0.75rem; }
+    .reviewer-avatar { width: 36px; height: 36px; border-radius: 50%; background: var(--surface2); display: flex; align-items: center; justify-content: center; font-size: 1rem; flex-shrink: 0; }
+    .reviewer-name { font-size: 0.88rem; font-weight: 500; }
+    .reviewer-date { font-size: 0.72rem; color: var(--muted); }
+    .review-stars { font-size: 0.9rem; letter-spacing: 0.05em; }
+    .review-comment { font-size: 0.85rem; color: var(--text); line-height: 1.65; margin-bottom: 0.75rem; }
+    .review-tags { display: flex; flex-wrap: wrap; gap: 0.35rem; }
+    .review-tag { font-size: 0.68rem; background: var(--surface2); border: 1px solid var(--border); border-radius: 100px; padding: 0.2rem 0.6rem; color: var(--muted); }
+
+    /* HOST RESPONSE */
+    .host-response { background: rgba(0,229,160,0.05); border: 1px solid rgba(0,229,160,0.12); border-radius: 0.875rem; padding: 0.875rem; margin-top: 0.75rem; }
+    .hr-label { font-size: 0.68rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.07em; color: var(--accent); margin-bottom: 0.3rem; }
+    .hr-text { font-size: 0.8rem; color: var(--muted); line-height: 1.6; }
+
+    /* BOTTOM NAV */
+    .bottom-nav { position: fixed; bottom: 0; left: 0; right: 0; height: var(--nav-h); background: rgba(13,20,40,0.97); backdrop-filter: blur(16px); border-top: 1px solid var(--border); display: flex; align-items: center; justify-content: space-around; padding: 0 0.5rem; z-index: 100; }
+    .nav-item { display: flex; flex-direction: column; align-items: center; gap: 0.25rem; padding: 0.5rem 1rem; border-radius: 0.875rem; text-decoration: none; min-width: 60px; }
+    .nav-item.active { background: rgba(0,229,160,0.08); }
+    .nav-icon { font-size: 1.3rem; line-height: 1; }
+    .nav-label { font-size: 0.65rem; font-weight: 500; color: var(--muted); }
+    .nav-item.active .nav-label { color: var(--accent); }
+
+    /* FILTER TABS */
+    .filter-tabs { display: flex; gap: 0.5rem; margin-bottom: 1rem; overflow-x: auto; scrollbar-width: none; }
+    .filter-tabs::-webkit-scrollbar { display: none; }
+    .f-tab { padding: 0.35rem 0.875rem; border-radius: 100px; border: 1px solid var(--border); background: var(--surface); color: var(--muted); font-size: 0.78rem; white-space: nowrap; cursor: pointer; transition: all 0.2s; font-family: var(--font-body); }
+    .f-tab.active { background: rgba(0,229,160,0.1); border-color: rgba(0,229,160,0.35); color: var(--accent); }
+  </style>
+</head>
+<body>
+
+  <div class="topbar">
+    <a href="bookings.html" class="back-btn" id="back-btn">←</a>
+    <div class="logo">Nest<span>Charge</span></div>
+  </div>
+
+  <div class="main">
+
+    <!-- ══ LEAVE REVIEW SCREEN ══ -->
+    <div class="screen active" id="screen-review">
+
+      <div style="margin-bottom:1.5rem">
+        <div style="font-size:0.7rem;font-weight:600;text-transform:uppercase;letter-spacing:0.08em;color:var(--accent);margin-bottom:0.4rem">Leave a review</div>
+        <div style="font-family:var(--font-head);font-size:1.4rem;font-weight:800;margin-bottom:0.25rem">How was your session?</div>
+        <div style="font-size:0.85rem;color:var(--muted)">Help the community by sharing your experience</div>
+      </div>
+
+      <!-- BOOKING SUMMARY -->
+      <div class="booking-summary">
+        <div class="bs-icon">🏠</div>
+        <div>
+          <div class="bs-name" id="bs-name">Sarah's Driveway</div>
+          <div class="bs-meta" id="bs-meta">Sarah M. · 15 Feb · 09:00–10:00 · 7kW</div>
+        </div>
+      </div>
+
+      <!-- OVERALL STAR RATING -->
+      <div class="star-section">
+        <div class="star-label">Overall experience</div>
+        <div class="stars" id="stars">
+          <span class="star" data-val="1" onclick="setRating(1)">⭐</span>
+          <span class="star" data-val="2" onclick="setRating(2)">⭐</span>
+          <span class="star" data-val="3" onclick="setRating(3)">⭐</span>
+          <span class="star" data-val="4" onclick="setRating(4)">⭐</span>
+          <span class="star" data-val="5" onclick="setRating(5)">⭐</span>
+        </div>
+        <div class="star-text" id="star-text">Tap to rate</div>
+      </div>
+
+      <!-- CATEGORY RATINGS -->
+      <div class="category-ratings">
+        <div class="cat-title">Rate specific areas</div>
+        <div class="cat-row">
+          <span class="cat-name">📍 Location & access</span>
+          <div class="cat-stars" id="cat-location">
+            <span class="cat-star" onclick="setCatRating('location',1)">⭐</span>
+            <span class="cat-star" onclick="setCatRating('location',2)">⭐</span>
+            <span class="cat-star" onclick="setCatRating('location',3)">⭐</span>
+            <span class="cat-star" onclick="setCatRating('location',4)">⭐</span>
+            <span class="cat-star" onclick="setCatRating('location',5)">⭐</span>
+          </div>
+        </div>
+        <div class="cat-row">
+          <span class="cat-name">⚡ Charge speed</span>
+          <div class="cat-stars" id="cat-speed">
+            <span class="cat-star" onclick="setCatRating('speed',1)">⭐</span>
+            <span class="cat-star" onclick="setCatRating('speed',2)">⭐</span>
+            <span class="cat-star" onclick="setCatRating('speed',3)">⭐</span>
+            <span class="cat-star" onclick="setCatRating('speed',4)">⭐</span>
+            <span class="cat-star" onclick="setCatRating('speed',5)">⭐</span>
+          </div>
+        </div>
+        <div class="cat-row">
+          <span class="cat-name">💬 Communication</span>
+          <div class="cat-stars" id="cat-comms">
+            <span class="cat-star" onclick="setCatRating('comms',1)">⭐</span>
+            <span class="cat-star" onclick="setCatRating('comms',2)">⭐</span>
+            <span class="cat-star" onclick="setCatRating('comms',3)">⭐</span>
+            <span class="cat-star" onclick="setCatRating('comms',4)">⭐</span>
+            <span class="cat-star" onclick="setCatRating('comms',5)">⭐</span>
+          </div>
+        </div>
+        <div class="cat-row">
+          <span class="cat-name">💷 Value for money</span>
+          <div class="cat-stars" id="cat-value">
+            <span class="cat-star" onclick="setCatRating('value',1)">⭐</span>
+            <span class="cat-star" onclick="setCatRating('value',2)">⭐</span>
+            <span class="cat-star" onclick="setCatRating('value',3)">⭐</span>
+            <span class="cat-star" onclick="setCatRating('value',4)">⭐</span>
+            <span class="cat-star" onclick="setCatRating('value',5)">⭐</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- QUICK TAGS -->
+      <div class="form-group">
+        <label class="form-label">Quick tags (optional)</label>
+        <div class="tags-wrap">
+          <span class="tag" onclick="this.classList.toggle('selected')">✅ Easy access</span>
+          <span class="tag" onclick="this.classList.toggle('selected')">⚡ Fast charge</span>
+          <span class="tag" onclick="this.classList.toggle('selected')">💬 Great host</span>
+          <span class="tag" onclick="this.classList.toggle('selected')">🏠 Clean space</span>
+          <span class="tag" onclick="this.classList.toggle('selected')">📍 Easy to find</span>
+          <span class="tag" onclick="this.classList.toggle('selected')">💷 Great value</span>
+          <span class="tag" onclick="this.classList.toggle('selected')">🔌 Charger worked perfectly</span>
+          <span class="tag" onclick="this.classList.toggle('selected')">🕐 On time</span>
+        </div>
+      </div>
+
+      <!-- WRITTEN REVIEW -->
+      <div class="form-group">
+        <label class="form-label">Write a review (optional)</label>
+        <textarea class="form-textarea" id="review-text" placeholder="Tell other drivers what to expect — parking, access, how the charge went..." maxlength="400" oninput="updateCharCount(this)"></textarea>
+        <div class="char-count"><span id="char-count">0</span>/400</div>
+      </div>
+
+      <button class="btn-primary" id="submit-btn" onclick="submitReview()" disabled>
+        <div class="spinner"></div>
+        <span class="btn-text">Submit Review →</span>
+      </button>
+      <button class="btn-skip" onclick="window.location.href='bookings.html'">Skip for now</button>
+
+    </div>
+
+    <!-- ══ SUCCESS SCREEN ══ -->
+    <div class="screen" id="screen-success">
+      <div class="success-wrap">
+        <div class="success-icon">⭐</div>
+        <div class="success-title">Review posted!</div>
+        <p class="success-sub">Thanks for helping the NestCharge community. Your review helps other drivers and rewards great hosts.</p>
+
+        <div class="review-display">
+          <div class="rd-stars" id="success-stars">⭐⭐⭐⭐⭐</div>
+          <div class="rd-comment" id="success-comment">"Great experience overall."</div>
+          <div class="rd-meta" id="success-meta">Sarah's Driveway · Just now</div>
+        </div>
+
+        <button class="btn-primary" onclick="showHostProfile()">
+          <span class="btn-text">See all reviews for this host →</span>
+        </button>
+        <button class="btn-skip" onclick="window.location.href='bookings.html'">Back to bookings</button>
+      </div>
+    </div>
+
+    <!-- ══ HOST PROFILE SCREEN ══ -->
+    <div class="screen" id="screen-host">
+
+      <!-- HOST HERO -->
+      <div class="host-profile-hero">
+        <div class="host-avatar">👩</div>
+        <div class="host-name">Sarah Mitchell</div>
+        <div class="host-since">Host since January 2025 · London</div>
+        <div class="host-badges">
+          <span class="badge gold">⭐ Top Host</span>
+          <span class="badge green">✅ ID Verified</span>
+          <span class="badge">🔌 7kW Wallbox</span>
+          <span class="badge">📍 Wandsworth</span>
+        </div>
+        <button class="btn-primary" onclick="window.location.href='booking.html'" style="max-width:240px;margin:0 auto">⚡ Book this charger</button>
+      </div>
+
+      <!-- RATING SUMMARY -->
+      <div class="rating-summary">
+        <div class="rating-overview">
+          <div class="rating-big">4.9</div>
+          <div class="rating-right">
+            <div class="rating-stars-big">⭐⭐⭐⭐⭐</div>
+            <div class="rating-count">Based on 47 reviews</div>
+          </div>
+        </div>
+        <div class="rating-bars">
+          <div class="rating-bar-row">
+            <span class="rating-bar-label">5</span>
+            <div class="rating-bar-track"><div class="rating-bar-fill" style="width:88%"></div></div>
+            <span class="rating-bar-count">41</span>
+          </div>
+          <div class="rating-bar-row">
+            <span class="rating-bar-label">4</span>
+            <div class="rating-bar-track"><div class="rating-bar-fill" style="width:10%"></div></div>
+            <span class="rating-bar-count">5</span>
+          </div>
+          <div class="rating-bar-row">
+            <span class="rating-bar-label">3</span>
+            <div class="rating-bar-track"><div class="rating-bar-fill" style="width:2%"></div></div>
+            <span class="rating-bar-count">1</span>
+          </div>
+          <div class="rating-bar-row">
+            <span class="rating-bar-label">2</span>
+            <div class="rating-bar-track"><div class="rating-bar-fill" style="width:0%"></div></div>
+            <span class="rating-bar-count">0</span>
+          </div>
+          <div class="rating-bar-row">
+            <span class="rating-bar-label">1</span>
+            <div class="rating-bar-track"><div class="rating-bar-fill" style="width:0%"></div></div>
+            <span class="rating-bar-count">0</span>
+          </div>
+        </div>
+        <div class="cat-summary">
+          <div class="cat-summary-item"><div class="cat-summary-val">4.9</div><div class="cat-summary-label">📍 Location</div></div>
+          <div class="cat-summary-item"><div class="cat-summary-val">5.0</div><div class="cat-summary-label">⚡ Speed</div></div>
+          <div class="cat-summary-item"><div class="cat-summary-val">4.8</div><div class="cat-summary-label">💬 Comms</div></div>
+          <div class="cat-summary-item"><div class="cat-summary-val">5.0</div><div class="cat-summary-label">💷 Value</div></div>
+        </div>
+      </div>
+
+      <!-- FILTER -->
+      <div class="filter-tabs">
+        <button class="f-tab active" onclick="filterReviews('all',this)">All (47)</button>
+        <button class="f-tab" onclick="filterReviews('5',this)">⭐⭐⭐⭐⭐ (41)</button>
+        <button class="f-tab" onclick="filterReviews('4',this)">⭐⭐⭐⭐ (5)</button>
+        <button class="f-tab" onclick="filterReviews('3',this)">⭐⭐⭐ (1)</button>
+      </div>
+
+      <!-- REVIEWS LIST -->
+      <div id="reviews-list">
+
+        <div class="review-card" data-rating="5">
+          <div class="review-header">
+            <div class="reviewer">
+              <div class="reviewer-avatar">🚗</div>
+              <div>
+                <div class="reviewer-name">Alex T.</div>
+                <div class="reviewer-date">20 Feb 2025</div>
+              </div>
+            </div>
+            <div class="review-stars">⭐⭐⭐⭐⭐</div>
+          </div>
+          <p class="review-comment">"Absolutely brilliant. Parked right outside, charger was exactly as described — proper 7kW wallbox. Sarah left clear instructions and even left the porch light on. Will definitely be booking again."</p>
+          <div class="review-tags">
+            <span class="review-tag">✅ Easy access</span>
+            <span class="review-tag">⚡ Fast charge</span>
+            <span class="review-tag">💬 Great host</span>
+          </div>
+          <div class="host-response">
+            <div class="hr-label">Response from Sarah</div>
+            <div class="hr-text">Thank you Alex! Always happy to help fellow EV drivers. See you next time 😊</div>
+          </div>
+        </div>
+
+        <div class="review-card" data-rating="5">
+          <div class="review-header">
+            <div class="reviewer">
+              <div class="reviewer-avatar">🚙</div>
+              <div>
+                <div class="reviewer-name">Maria L.</div>
+                <div class="reviewer-date">18 Feb 2025</div>
+              </div>
+            </div>
+            <div class="review-stars">⭐⭐⭐⭐⭐</div>
+          </div>
+          <p class="review-comment">"So much better than the public chargers near me. Half the price and actually works. The driveway is easy to find and there's enough room for my Tesla Model Y."</p>
+          <div class="review-tags">
+            <span class="review-tag">💷 Great value</span>
+            <span class="review-tag">🔌 Charger worked perfectly</span>
+            <span class="review-tag">📍 Easy to find</span>
+          </div>
+        </div>
+
+        <div class="review-card" data-rating="5">
+          <div class="review-header">
+            <div class="reviewer">
+              <div class="reviewer-avatar">🚘</div>
+              <div>
+                <div class="reviewer-name">James K.</div>
+                <div class="reviewer-date">15 Feb 2025</div>
+              </div>
+            </div>
+            <div class="review-stars">⭐⭐⭐⭐⭐</div>
+          </div>
+          <p class="review-comment">"Used Sarah's charger three times now. Consistent, reliable, and great value. The booking and payment process through NestCharge is seamless. Highly recommend."</p>
+          <div class="review-tags">
+            <span class="review-tag">🕐 On time</span>
+            <span class="review-tag">💷 Great value</span>
+          </div>
+        </div>
+
+        <div class="review-card" data-rating="4">
+          <div class="review-header">
+            <div class="reviewer">
+              <div class="reviewer-avatar">🚗</div>
+              <div>
+                <div class="reviewer-name">Priya S.</div>
+                <div class="reviewer-date">12 Feb 2025</div>
+              </div>
+            </div>
+            <div class="review-stars">⭐⭐⭐⭐</div>
+          </div>
+          <p class="review-comment">"Good experience overall. Charger worked well and parking was easy. Slight delay getting access instructions but Sarah sorted it quickly."</p>
+          <div class="review-tags">
+            <span class="review-tag">⚡ Fast charge</span>
+            <span class="review-tag">🏠 Clean space</span>
+          </div>
+          <div class="host-response">
+            <div class="hr-label">Response from Sarah</div>
+            <div class="hr-text">Sorry about the slight delay Priya — I'll make sure instructions go out faster next time. Thanks for the feedback!</div>
+          </div>
+        </div>
+
+        <div class="review-card" data-rating="3">
+          <div class="review-header">
+            <div class="reviewer">
+              <div class="reviewer-avatar">🚙</div>
+              <div>
+                <div class="reviewer-name">Wei C.</div>
+                <div class="reviewer-date">8 Feb 2025</div>
+              </div>
+            </div>
+            <div class="review-stars">⭐⭐⭐</div>
+          </div>
+          <p class="review-comment">"Charger worked fine but access was a bit confusing. The instructions mentioned a blue gate but I couldn't find it. Once I called Sarah it was fine — she was very helpful."</p>
+          <div class="review-tags">
+            <span class="review-tag">💬 Great host</span>
+          </div>
+          <div class="host-response">
+            <div class="hr-label">Response from Sarah</div>
+            <div class="hr-text">Hi Wei, thanks for flagging this — I've updated the access instructions with better directions. Really appreciate the honest feedback!</div>
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+
+  </div>
+
+  <!-- BOTTOM NAV -->
+  <nav class="bottom-nav">
+    <a href="index.html" class="nav-item"><span class="nav-icon">🏠</span><span class="nav-label">Home</span></a>
+    <a href="map.html" class="nav-item"><span class="nav-icon">🗺</span><span class="nav-label">Find</span></a>
+    <a href="bookings.html" class="nav-item active"><span class="nav-icon">📋</span><span class="nav-label">Bookings</span></a>
+    <a href="host-dashboard.html" class="nav-item"><span class="nav-icon">🔌</span><span class="nav-label">Host</span></a>
+    <a href="auth.html" class="nav-item"><span class="nav-icon">👤</span><span class="nav-label">Profile</span></a>
+  </nav>
+
+  <script>
+    // ── SUPABASE ──
+    const { createClient } = supabase;
+    const sb = createClient(
+      'https://ovhezomrlrfajrmwbdya.supabase.co',
+      'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im92aGV6b21ybHJmYWpybXdiZHlhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE5NjM1MzEsImV4cCI6MjA4NzUzOTUzMX0.UTFUvtMKkyIIdJrc0GewWyTzAtONymUqZo_jJtT2ONI'
+    );
+
+    let selectedRating = 0;
+    const catRatings = { location: 0, speed: 0, comms: 0, value: 0 };
+    const starLabels = ['', 'Poor 😞', 'Fair 😐', 'Good 👍', 'Great 😊', 'Excellent! 🌟'];
+
+    // ── CHECK URL PARAMS ──
+    window.addEventListener('DOMContentLoaded', () => {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get('view') === 'host') showHostProfile();
+    });
+
+    // ── STAR RATING ──
+    function setRating(val) {
+      selectedRating = val;
+      document.querySelectorAll('#stars .star').forEach((s, i) => {
+        s.classList.toggle('active', i < val);
+      });
+      const textEl = document.getElementById('star-text');
+      textEl.textContent = starLabels[val];
+      textEl.className = 'star-text filled';
+      document.getElementById('submit-btn').disabled = false;
+    }
+
+    // ── CATEGORY RATINGS ──
+    function setCatRating(cat, val) {
+      catRatings[cat] = val;
+      document.querySelectorAll(`#cat-${cat} .cat-star`).forEach((s, i) => {
+        s.classList.toggle('active', i < val);
+      });
+    }
+
+    // ── CHAR COUNT ──
+    function updateCharCount(el) {
+      document.getElementById('char-count').textContent = el.value.length;
+    }
+
+    // ── SUBMIT REVIEW ──
+    async function submitReview() {
+      const btn = document.getElementById('submit-btn');
+      btn.classList.add('loading');
+      btn.disabled = true;
+
+      const comment = document.getElementById('review-text').value.trim();
+      const tags = [...document.querySelectorAll('.tag.selected')].map(t => t.textContent.trim());
+
+      try {
+        const { data: { session } } = await sb.auth.getSession();
+        if (session) {
+          await sb.from('reviews').insert({
+            reviewer_id: session.user.id,
+            listing_id: null, // will be real listing ID in production
+            booking_id: null,
+            rating: selectedRating,
+            comment: comment || null,
+          });
+        }
+
+        // Show success screen
+        const starsHtml = '⭐'.repeat(selectedRating);
+        document.getElementById('success-stars').textContent = starsHtml;
+        document.getElementById('success-comment').textContent = comment ? `"${comment}"` : `"${starLabels[selectedRating]}"`;
+
+        document.getElementById('screen-review').classList.remove('active');
+        document.getElementById('screen-success').classList.add('active');
+        window.scrollTo(0, 0);
+
+      } catch (err) {
+        console.error(err);
+        btn.classList.remove('loading');
+        btn.disabled = false;
+      }
+    }
+
+    // ── SHOW HOST PROFILE ──
+    function showHostProfile() {
+      document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+      document.getElementById('screen-host').classList.add('active');
+      document.getElementById('back-btn').onclick = () => {
+        document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+        document.getElementById('screen-success').classList.add('active');
+      };
+      window.scrollTo(0, 0);
+
+      // Animate rating bars
+      setTimeout(() => {
+        document.querySelectorAll('.rating-bar-fill').forEach(bar => {
+          const w = bar.style.width;
+          bar.style.width = '0%';
+          setTimeout(() => bar.style.width = w, 100);
+        });
+      }, 200);
+    }
+
+    // ── FILTER REVIEWS ──
+    function filterReviews(rating, btn) {
+      document.querySelectorAll('.f-tab').forEach(t => t.classList.remove('active'));
+      btn.classList.add('active');
+      document.querySelectorAll('.review-card').forEach(card => {
+        if (rating === 'all') { card.style.display = ''; return; }
+        card.style.display = card.dataset.rating === rating ? '' : 'none';
+      });
+    }
+  </script>
+
+</body>
+</html>
