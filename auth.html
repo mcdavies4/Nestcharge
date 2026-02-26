@@ -412,10 +412,9 @@
 
   // ── GOOGLE ──
   async function doGoogle() {
-    var dest = selectedRole === 'host' ? 'host-dashboard.html' : 'bookings.html';
     var result = await sb.auth.signInWithOAuth({
       provider: 'google',
-      options: { redirectTo: window.location.origin + '/' + dest }
+      options: { redirectTo: window.location.origin + '/callback.html' }
     });
     if (result.error) showError(result.error.message);
   }
