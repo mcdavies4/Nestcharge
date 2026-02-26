@@ -814,20 +814,28 @@
     );
 
     // ── LOAD USER AND REAL BOOKINGS ──
+    // Handle both normal login and Google OAuth callback
+    async function initUser(user) {
+      const meta = user.user_metadata || {};
+      const name = meta.full_name || meta.name || user.email.split('@')[0];
+      const first = name.split(' ')[0];
+      document.getElementById('greeting-name').textContent = 'Hey, ' + first + ' 👋';
+      document.getElementById('greeting-sub').textContent = 'Here are your charging sessions';
+      document.getElementById('avatar-btn').textContent = first.charAt(0).toUpperCase();
+      await loadRealBookings(user.id);
+    }
+
     window.addEventListener('DOMContentLoaded', async () => {
+      // First try getSession — works for normal login
       const { data: { session } } = await sb.auth.getSession();
       if (session) {
-        const user = session.user;
-        const meta = user.user_metadata || {};
-        const name = meta.full_name || meta.name || user.email.split('@')[0];
-        const first = name.split(' ')[0];
-        document.getElementById('greeting-name').textContent = 'Hey, ' + first + ' 👋';
-        document.getElementById('greeting-sub').textContent = 'Here are your charging sessions';
-        document.getElementById('avatar-btn').textContent = first.charAt(0).toUpperCase();
-
-        // Load real bookings from Supabase
-        await loadRealBookings(session.user.id);
+        initUser(session.user);
+        return;
       }
+      // If no session yet, wait for OAuth callback via onAuthStateChange
+      sb.auth.onAuthStateChange((event, session) => {
+        if (session) initUser(session.user);
+      });
     });
 
     async function loadRealBookings(userId) {

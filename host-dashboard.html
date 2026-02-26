@@ -441,20 +441,37 @@
     let userListings = [];
 
     // ── INIT ──
-    window.addEventListener('DOMContentLoaded', async () => {
-      const { data: { session } } = await sb.auth.getSession();
-      if (!session) { sessionStorage.setItem('returnTo', window.location.pathname.replace('/','') || 'bookings.html'); window.location.href = 'auth.html'; return; }
-
-      currentUser = session.user;
-      const meta = currentUser.user_metadata || {};
-      const name = meta.full_name || meta.name || currentUser.email.split('@')[0];
+    async function initHost(user) {
+      currentUser = user;
+      const meta = user.user_metadata || {};
+      const name = meta.full_name || meta.name || user.email.split('@')[0];
       const first = name.split(' ')[0];
-
       document.getElementById('greeting-name').textContent = 'Hey, ' + first + ' 🏠';
       document.getElementById('avatar-btn').textContent = first.charAt(0).toUpperCase();
-
       await loadListings();
       await loadEarnings();
+    }
+
+    window.addEventListener('DOMContentLoaded', async () => {
+      const { data: { session } } = await sb.auth.getSession();
+      if (session) {
+        initHost(session.user);
+        return;
+      }
+      // Wait for OAuth callback
+      const { data: { subscription } } = sb.auth.onAuthStateChange((event, session) => {
+        if (session) {
+          subscription.unsubscribe();
+          initHost(session.user);
+        } else if (event === 'SIGNED_OUT') {
+          window.location.href = 'auth.html';
+        }
+      });
+      // If still no session after 3s, go to login
+      setTimeout(async () => {
+        const { data: { session } } = await sb.auth.getSession();
+        if (!session) window.location.href = 'auth.html';
+      }, 3000);
     });
 
     // ── LOAD LISTINGS ──
