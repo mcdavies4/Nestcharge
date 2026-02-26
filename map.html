@@ -2,9 +2,37 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta name="theme-color" content="#0a0f1e" />
-  <title>NestCharge — Find a Charger</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />  <title>Find a Charger Near You — NestCharge</title>
+  <!-- ── SEO ── -->
+  <meta name="description" content="Browse EV chargers near you on the NestCharge map. Filter by speed, price and availability. Book instantly from a verified local host." />
+  <meta name="keywords" content="find EV charger, EV charger near me, home EV charger map, book EV charging UK" />
+  <meta name="author" content="NestCharge Ltd" />
+  <meta name="robots" content="index, follow" />
+  <link rel="canonical" href="https://nestcharge.co.uk/map" />
+
+  <!-- Open Graph / WhatsApp / Facebook -->
+  <meta property="og:type" content="website" />
+  <meta property="og:url" content="https://nestcharge.co.uk/map" />
+  <meta property="og:title" content="Find a Charger Near You — NestCharge" />
+  <meta property="og:description" content="Browse EV chargers near you on the NestCharge map. Filter by speed, price and availability. Book instantly from a verified local host." />
+  <meta property="og:image" content="https://nestcharge.co.uk/og-image.png" />
+  <meta property="og:site_name" content="NestCharge" />
+  <meta property="og:locale" content="en_GB" />
+
+  <!-- Twitter Card -->
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:site" content="@nestcharge" />
+  <meta name="twitter:title" content="Find a Charger Near You — NestCharge" />
+  <meta name="twitter:description" content="Browse EV chargers near you on the NestCharge map. Filter by speed, price and availability. Book instantly from a verified local host." />
+  <meta name="twitter:image" content="https://nestcharge.co.uk/og-image.png" />
+
+  <!-- Favicon — all devices -->
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+  <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png" />
+  <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+  <link rel="mask-icon" href="/favicon.svg" color="#00e5a0" />
+  <meta name="msapplication-TileColor" content="#070c1a" />
+  <meta name="theme-color" content="#070c1a" />
   <link rel="manifest" href="manifest.json" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link href="https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet" />
@@ -466,95 +494,43 @@
     <div id="detail-content"></div>
   </div>
 
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script>
-    // ── MOCK DATA ──
-    const chargers = [
-      {
-        id: 1,
-        name: "Sarah's Driveway",
-        host: "Sarah M. · ⭐ 4.9 · 47 sessions",
-        emoji: "🏠",
-        lat: 51.5074, lng: -0.1278,
-        speed: 7, speedLabel: "7kW",
-        price: 0.28,
-        distance: "0.3 miles",
-        available: true,
-        type: "Type 2",
-        slots: ["06:00","07:00","08:00","09:00","10:00","14:00","15:00","16:00","18:00","19:00"],
-        taken: ["07:00","10:00"]
-      },
-      {
-        id: 2,
-        name: "James — Garage",
-        host: "James K. · ⭐ 4.8 · 32 sessions",
-        emoji: "🔌",
-        lat: 51.509, lng: -0.118,
-        speed: 11, speedLabel: "11kW",
-        price: 0.24,
-        distance: "0.6 miles",
-        available: true,
-        type: "Type 2",
-        slots: ["06:00","07:00","08:00","09:00","12:00","13:00","17:00","18:00","19:00","20:00"],
-        taken: ["08:00","13:00","18:00"]
-      },
-      {
-        id: 3,
-        name: "Priya's Flat Bay",
-        host: "Priya S. · ⭐ 5.0 · 18 sessions",
-        emoji: "🏢",
-        lat: 51.515, lng: -0.132,
-        speed: 3.6, speedLabel: "3.6kW",
-        price: 0.18,
-        distance: "0.8 miles",
-        available: true,
-        type: "3-pin",
-        slots: ["20:00","21:00","22:00","23:00","00:00","01:00","02:00","03:00","04:00","05:00"],
-        taken: []
-      },
-      {
-        id: 4,
-        name: "Marcus — Side Street",
-        host: "Marcus O. · ⭐ 4.7 · 61 sessions",
-        emoji: "🚗",
-        lat: 51.503, lng: -0.123,
-        speed: 7, speedLabel: "7kW",
-        price: 0.26,
-        distance: "1.1 miles",
-        available: false,
-        type: "Type 2",
-        slots: ["09:00","10:00","11:00","12:00","13:00","14:00","15:00","16:00"],
-        taken: ["09:00","10:00","11:00","12:00","13:00","14:00","15:00","16:00"]
-      },
-      {
-        id: 5,
-        name: "Chen Family Home",
-        host: "Wei C. · ⭐ 4.9 · 29 sessions",
-        emoji: "🏡",
-        lat: 51.512, lng: -0.115,
-        speed: 22, speedLabel: "22kW",
-        price: 0.32,
-        distance: "1.4 miles",
-        available: true,
-        type: "Type 2 (3-phase)",
-        slots: ["06:00","07:00","08:00","16:00","17:00","18:00","19:00","20:00"],
-        taken: ["07:00"]
-      },
-      {
-        id: 6,
-        name: "Anita — Driveway",
-        host: "Anita B. · ⭐ 4.6 · 14 sessions",
-        emoji: "🌿",
-        lat: 51.506, lng: -0.135,
-        speed: 7, speedLabel: "7kW",
-        price: 0.22,
-        distance: "1.7 miles",
-        available: true,
-        type: "Type 2",
-        slots: ["08:00","09:00","10:00","11:00","17:00","18:00","19:00","20:00"],
-        taken: ["09:00"]
-      }
-    ];
 
+    // ── SUPABASE ──
+    const { createClient } = supabase;
+    const sb = createClient(
+      'https://ovhezomrlrfajrmwbdya.supabase.co',
+      'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im92aGV6b21ybHJmYWpybXdiZHlhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE5NjM1MzEsImV4cCI6MjA4NzUzOTUzMX0.UTFUvtMKkyIIdJrc0GewWyTzAtONymUqZo_jJtT2ONI'
+    );
+
+    // Convert Supabase listing to map charger format
+    function listingToCharger(l, idx) {
+      const emojis = ['🏠','🔌','🏡','🏢','⚡','🌿'];
+      const speed = parseFloat(l.speed) || 7;
+      const speedLabel = speed >= 22 ? '22kW' : speed >= 11 ? '11kW' : speed >= 7 ? '7kW' : '3.6kW';
+      const slots = Array.isArray(l.available_slots) ? l.available_slots : ['08:00','09:00','10:00','11:00','17:00','18:00','19:00','20:00'];
+      return {
+        id: l.id,
+        name: l.name || 'Charger',
+        host: 'Verified Host · ⭐ New',
+        emoji: emojis[idx % emojis.length],
+        lat: parseFloat(l.lat) || 51.5074,
+        lng: parseFloat(l.lng) || -0.1278,
+        speed,
+        speedLabel,
+        price: parseFloat(l.price_per_hour) || 0.28,
+        distance: '—',
+        available: l.is_active !== false,
+        type: l.connector || 'Type 2',
+        slots,
+        taken: [],
+        postcode: l.postcode || '',
+        address: l.address || ''
+      };
+    }
+
+    let chargers = [];
     let map, markers = [], activeFilter = 'all', selectedCharger = null, selectedSlot = null;
     let sheetOpen = false;
 
@@ -577,13 +553,44 @@
         ]
       });
 
-      renderChargers(chargers);
-      renderList(chargers);
+      // Try to center on user's location
+      if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(pos => {
+          map.panTo({ lat: pos.coords.latitude, lng: pos.coords.longitude });
+        });
+      }
+
+      loadListings();
 
       // Open sheet on map click away
       map.addListener('click', () => {
         closeDetail();
       });
+    }
+
+    // ── LOAD REAL LISTINGS ──
+    async function loadListings() {
+      const { data, error } = await sb
+        .from('listings')
+        .select('*')
+        .eq('is_active', true)
+        .order('created_at', { ascending: false });
+
+      if (error) { console.error('Supabase error:', error); return; }
+
+      chargers = (data || []).map((l, i) => listingToCharger(l, i));
+      renderChargers(chargers);
+      renderList(chargers);
+
+      if (chargers.length === 0) {
+        document.getElementById('charger-count').textContent = 'No chargers yet';
+        document.getElementById('charger-list').innerHTML = `
+          <div style="text-align:center;padding:2.5rem 1rem;color:var(--muted)">
+            <div style="font-size:2.5rem;margin-bottom:0.75rem">🔌</div>
+            <div style="font-weight:500;color:var(--text);font-size:0.95rem;margin-bottom:0.4rem">No chargers in your area yet</div>
+            <div style="font-size:0.82rem">Be the first — <a href="host.html" style="color:var(--accent);text-decoration:none">list your charger →</a></div>
+          </div>`;
+      }
     }
 
     // ── RENDER MAP MARKERS ──
