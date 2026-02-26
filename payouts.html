@@ -1,0 +1,455 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Payouts — NestCharge</title>
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+  <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+  <meta name="theme-color" content="#070c1a" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet" />
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #070c1a; --bg2: #0d1428; --surface: #131d2e; --surface2: #1c2840;
+      --border: rgba(255,255,255,0.09); --accent: #00d494; --accent2: #0af;
+      --text: #dde3f0; --muted: #9aa3b5; --error: #ff5e7d; --warning: #f59e0b;
+      --font-head: 'Syne', sans-serif; --font-body: 'DM Sans', sans-serif;
+    }
+    html { overflow-x: hidden; }
+    body { min-height: 100vh; font-family: var(--font-body); background: var(--bg); color: var(--text); font-weight: 300; padding-bottom: 6rem; }
+    .topbar { background: var(--bg2); border-bottom: 1px solid var(--border); padding: 1rem 1.25rem; display: flex; align-items: center; gap: 0.875rem; position: sticky; top: 0; z-index: 40; }
+    .back-btn { width: 36px; height: 36px; border-radius: 50%; background: var(--surface); border: 1px solid var(--border); display: flex; align-items: center; justify-content: center; font-size: 1rem; flex-shrink: 0; text-decoration: none; color: var(--text); }
+    .topbar-title { font-family: var(--font-head); font-size: 1rem; font-weight: 700; }
+    .topbar-sub { font-size: 0.75rem; color: var(--muted); margin-top: 0.1rem; }
+    .content { max-width: 560px; margin: 0 auto; padding: 1.25rem; }
+
+    /* EARNINGS HERO */
+    .earnings-hero { background: linear-gradient(135deg, #091a12 0%, #091628 100%); border: 1px solid rgba(0,212,148,0.18); border-radius: 1.5rem; padding: 1.75rem; margin-bottom: 0.75rem; position: relative; overflow: hidden; }
+    .earnings-hero::before { content:''; position:absolute; top:-60px; right:-60px; width:200px; height:200px; border-radius:50%; background:radial-gradient(circle, rgba(0,212,148,0.06) 0%, transparent 70%); pointer-events:none; }
+    .earnings-label { font-size: 0.72rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted); margin-bottom: 0.5rem; }
+    .earnings-amount { font-family: var(--font-head); font-size: 2.6rem; font-weight: 800; line-height: 1; margin-bottom: 0.4rem; }
+    .earnings-amount .cur { color: var(--muted); font-size: 1.5rem; }
+    .earnings-amount .val { color: var(--accent); }
+    .earnings-sub { font-size: 0.8rem; color: var(--muted); }
+    .earnings-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.625rem; margin-top: 1.25rem; }
+    .earn-stat { background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.07); border-radius: 0.875rem; padding: 0.875rem; }
+    .earn-stat-val { font-family: var(--font-head); font-size: 1.15rem; font-weight: 700; }
+    .earn-stat-val.green { color: var(--accent); }
+    .earn-stat-val.amber { color: var(--warning); }
+    .earn-stat-label { font-size: 0.7rem; color: var(--muted); margin-top: 0.2rem; }
+
+    /* PENDING BANNER */
+    .pending-banner { background: linear-gradient(135deg, rgba(245,158,11,0.08), rgba(245,158,11,0.04)); border: 1px solid rgba(245,158,11,0.2); border-radius: 1.125rem; padding: 1rem 1.25rem; display: flex; align-items: center; gap: 1rem; margin-bottom: 1.25rem; }
+    .pending-icon { font-size: 1.5rem; flex-shrink: 0; }
+    .pending-text { flex: 1; }
+    .pending-title { font-size: 0.88rem; font-weight: 600; color: var(--warning); }
+    .pending-sub { font-size: 0.75rem; color: var(--muted); margin-top: 0.15rem; }
+    .pending-amount { font-family: var(--font-head); font-size: 1.1rem; font-weight: 800; color: var(--warning); }
+
+    /* STRIPE CONNECT BANNER */
+    .stripe-banner { background: linear-gradient(135deg, #0f1a2e, #111e35); border: 1px solid rgba(99,91,255,0.25); border-radius: 1.25rem; padding: 1.25rem; margin-bottom: 1.25rem; }
+    .stripe-banner.connected { border-color: rgba(0,212,148,0.2); background: linear-gradient(135deg, #091a12, #0a1628); }
+    .stripe-banner-top { display: flex; align-items: center; gap: 0.875rem; margin-bottom: 0.875rem; }
+    .stripe-logo { width: 40px; height: 40px; border-radius: 0.75rem; background: #635bff; display: flex; align-items: center; justify-content: center; font-size: 1.1rem; flex-shrink: 0; }
+    .stripe-logo.connected-logo { background: rgba(0,212,148,0.15); }
+    .stripe-info-title { font-family: var(--font-head); font-size: 0.9rem; font-weight: 700; }
+    .stripe-info-sub { font-size: 0.75rem; color: var(--muted); margin-top: 0.15rem; }
+    .stripe-features { display: flex; flex-direction: column; gap: 0.4rem; margin-bottom: 1rem; }
+    .stripe-feature { display: flex; align-items: center; gap: 0.5rem; font-size: 0.8rem; color: var(--muted); }
+    .stripe-feature span:first-child { color: var(--accent); font-size: 0.85rem; }
+    .stripe-btn { width: 100%; padding: 0.875rem; border-radius: 100px; font-family: var(--font-head); font-size: 0.9rem; font-weight: 700; cursor: pointer; border: none; background: #635bff; color: #fff; transition: opacity 0.2s; }
+    .stripe-btn:hover { opacity: 0.85; }
+    .stripe-btn.connected-btn { background: var(--accent); color: #000; }
+    .connected-status { display: flex; align-items: center; gap: 0.5rem; font-size: 0.8rem; color: var(--accent); margin-bottom: 0.875rem; }
+    .connected-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); }
+
+    /* FEE EXPLAINER */
+    .fee-explainer { background: var(--surface); border: 1px solid var(--border); border-radius: 1.125rem; padding: 1.1rem 1.25rem; margin-bottom: 1.25rem; }
+    .fee-title { font-size: 0.72rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.09em; color: var(--muted); margin-bottom: 0.875rem; }
+    .fee-row { display: flex; justify-content: space-between; align-items: center; padding: 0.5rem 0; border-bottom: 1px solid var(--border); font-size: 0.84rem; }
+    .fee-row:last-child { border-bottom: none; }
+    .fee-row .k { color: var(--muted); }
+    .fee-row .v { font-weight: 600; }
+    .fee-row .v.green { color: var(--accent); }
+    .fee-row .v.red { color: var(--error); }
+    .fee-example { background: rgba(0,212,148,0.05); border: 1px solid rgba(0,212,148,0.1); border-radius: 0.75rem; padding: 0.875rem; margin-top: 0.875rem; font-size: 0.8rem; color: var(--muted); line-height: 1.6; }
+    .fee-example strong { color: var(--accent); }
+
+    /* SECTION */
+    .section-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.875rem; margin-top: 1.75rem; }
+    .section-title { font-family: var(--font-head); font-size: 0.9rem; font-weight: 700; }
+
+    /* PAYOUT HISTORY */
+    .payout-list { display: flex; flex-direction: column; gap: 0.5rem; }
+    .payout-item { background: var(--surface); border: 1px solid var(--border); border-radius: 1.125rem; padding: 1rem 1.25rem; display: flex; align-items: center; gap: 1rem; cursor: pointer; transition: border-color 0.2s; }
+    .payout-item:hover { border-color: rgba(255,255,255,0.15); }
+    .payout-icon { width: 42px; height: 42px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1rem; flex-shrink: 0; }
+    .payout-icon.completed { background: rgba(0,212,148,0.1); }
+    .payout-icon.pending { background: rgba(245,158,11,0.1); }
+    .payout-icon.processing { background: rgba(0,170,255,0.1); }
+    .payout-info { flex: 1; min-width: 0; }
+    .payout-name { font-size: 0.88rem; font-weight: 500; }
+    .payout-date { font-size: 0.73rem; color: var(--muted); margin-top: 0.15rem; }
+    .payout-right { text-align: right; flex-shrink: 0; }
+    .payout-amount { font-family: var(--font-head); font-size: 0.95rem; font-weight: 700; color: var(--accent); }
+    .payout-status { font-size: 0.68rem; margin-top: 0.2rem; }
+    .payout-status.paid { color: var(--accent); }
+    .payout-status.pending { color: var(--warning); }
+    .payout-status.processing { color: var(--accent2); }
+
+    .empty { text-align: center; padding: 2.5rem 1rem; color: var(--muted); font-size: 0.85rem; background: var(--surface); border: 1px solid var(--border); border-radius: 1.25rem; }
+    .empty-icon { font-size: 2rem; margin-bottom: 0.75rem; }
+    .empty-title { color: var(--text); font-weight: 500; margin-bottom: 0.3rem; font-size: 0.9rem; }
+
+    /* MODAL */
+    .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.75); z-index: 100; opacity: 0; pointer-events: none; transition: opacity 0.3s; }
+    .modal-overlay.show { opacity: 1; pointer-events: all; }
+    .modal { position: fixed; bottom: 0; left: 0; right: 0; background: var(--bg2); border-radius: 1.75rem 1.75rem 0 0; border-top: 1px solid var(--border); padding: 0 1.5rem 2rem; z-index: 101; transform: translateY(100%); transition: transform 0.38s cubic-bezier(0.32,0.72,0,1); max-width: 560px; margin: 0 auto; max-height: 90vh; overflow-y: auto; }
+    .modal.open { transform: translateY(0); }
+    .modal-handle { width: 40px; height: 4px; background: rgba(255,255,255,0.1); border-radius: 100px; margin: 1rem auto 1.5rem; }
+    .modal-title { font-family: var(--font-head); font-size: 1.05rem; font-weight: 800; margin-bottom: 1.25rem; }
+    .detail-rows { display: flex; flex-direction: column; margin-bottom: 1.1rem; }
+    .detail-row { display: flex; justify-content: space-between; align-items: center; padding: 0.7rem 0; border-bottom: 1px solid var(--border); font-size: 0.84rem; }
+    .detail-row:last-child { border-bottom: none; }
+    .detail-row .k { color: var(--muted); }
+    .detail-row .v { font-weight: 500; text-align: right; }
+    .modal-btn { width: 100%; padding: 0.9rem; border-radius: 100px; font-family: var(--font-head); font-size: 0.9rem; font-weight: 700; cursor: pointer; border: none; margin-bottom: 0.6rem; transition: opacity 0.2s; }
+    .modal-btn:hover { opacity: 0.85; }
+    .modal-btn-accent { background: var(--accent); color: #000; }
+    .modal-btn-neutral { background: var(--surface2); color: var(--text); border: 1px solid var(--border); font-family: var(--font-body); font-weight: 400; }
+
+    /* NAV */
+    .bottom-nav { position: fixed; bottom: 0; left: 0; right: 0; background: rgba(13,20,40,0.97); backdrop-filter: blur(20px); border-top: 1px solid var(--border); display: flex; padding: 0.625rem 0 1.25rem; z-index: 50; }
+    .nav-item { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 0.25rem; text-decoration: none; color: var(--muted); font-size: 0.6rem; font-weight: 500; text-transform: uppercase; letter-spacing: 0.05em; padding: 0.25rem 0; transition: color 0.2s; }
+    .nav-item.active { color: var(--accent); }
+    .nav-icon { font-size: 1.25rem; line-height: 1; }
+
+    .toast { position: fixed; bottom: 5.5rem; left: 50%; transform: translateX(-50%) translateY(60px); background: var(--surface); border: 1px solid var(--border); border-radius: 100px; padding: 0.7rem 1.5rem; font-size: 0.83rem; z-index: 200; transition: transform 0.4s cubic-bezier(0.34,1.56,0.64,1); white-space: nowrap; opacity: 0; }
+    .toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
+    .toast.success { border-color: rgba(0,212,148,0.3); color: var(--accent); }
+    .toast.error { border-color: rgba(255,94,125,0.3); color: var(--error); }
+    @keyframes fadeUp { from{opacity:0;transform:translateY(14px)} to{opacity:1;transform:translateY(0)} }
+    .fade-up { opacity:0; animation: fadeUp 0.4s ease forwards; }
+    .fade-up:nth-child(1){animation-delay:0.05s} .fade-up:nth-child(2){animation-delay:0.1s} .fade-up:nth-child(3){animation-delay:0.15s} .fade-up:nth-child(4){animation-delay:0.2s} .fade-up:nth-child(5){animation-delay:0.25s}
+  </style>
+</head>
+<body>
+  <div class="topbar">
+    <a class="back-btn" href="host-dashboard.html">←</a>
+    <div>
+      <div class="topbar-title">Payouts</div>
+      <div class="topbar-sub">Your earnings & bank account</div>
+    </div>
+  </div>
+
+  <div class="content">
+
+    <!-- EARNINGS HERO -->
+    <div class="earnings-hero fade-up">
+      <div class="earnings-label">Total earned (all time)</div>
+      <div class="earnings-amount"><span class="cur">£</span><span class="val" id="total-earned">0.00</span></div>
+      <div class="earnings-sub" id="earn-sub">Loading your earnings...</div>
+      <div class="earnings-grid">
+        <div class="earn-stat"><div class="earn-stat-val green" id="stat-this-month">£0.00</div><div class="earn-stat-label">This month</div></div>
+        <div class="earn-stat"><div class="earn-stat-val amber" id="stat-pending">£0.00</div><div class="earn-stat-label">Pending payout</div></div>
+        <div class="earn-stat"><div class="earn-stat-val" id="stat-sessions">0</div><div class="earn-stat-label">Total sessions</div></div>
+        <div class="earn-stat"><div class="earn-stat-val" id="stat-avg">£0</div><div class="earn-stat-label">Avg per session</div></div>
+      </div>
+    </div>
+
+    <!-- PENDING PAYOUT BANNER -->
+    <div class="pending-banner fade-up" id="pending-banner" style="display:none">
+      <div class="pending-icon">⏳</div>
+      <div class="pending-text">
+        <div class="pending-title">Payout in progress</div>
+        <div class="pending-sub">Arrives in your bank within 2 business days</div>
+      </div>
+      <div class="pending-amount" id="pending-amt">£0.00</div>
+    </div>
+
+    <!-- STRIPE CONNECT -->
+    <div class="stripe-banner fade-up" id="stripe-banner">
+      <div class="stripe-banner-top">
+        <div class="stripe-logo">💳</div>
+        <div>
+          <div class="stripe-info-title">Connect your bank account</div>
+          <div class="stripe-info-sub">Powered by Stripe Connect — used by Airbnb, Lyft & more</div>
+        </div>
+      </div>
+      <div class="stripe-features">
+        <div class="stripe-feature"><span>✓</span><span>Automatic weekly payouts to your UK bank</span></div>
+        <div class="stripe-feature"><span>✓</span><span>Real-time earnings dashboard</span></div>
+        <div class="stripe-feature"><span>✓</span><span>Instant notifications when you get paid</span></div>
+        <div class="stripe-feature"><span>✓</span><span>Bank-level encryption — NestCharge never sees your details</span></div>
+      </div>
+      <button class="stripe-btn" onclick="connectStripe()">Set up bank account →</button>
+    </div>
+
+    <div class="stripe-banner connected fade-up" id="stripe-connected" style="display:none">
+      <div class="stripe-banner-top">
+        <div class="stripe-logo connected-logo">🏦</div>
+        <div>
+          <div class="stripe-info-title">Bank account connected</div>
+          <div class="stripe-info-sub" id="bank-detail">Barclays ···· 4521</div>
+        </div>
+      </div>
+      <div class="connected-status"><div class="connected-dot"></div>Active — weekly automatic payouts</div>
+      <button class="stripe-btn connected-btn" onclick="showToast('Opening Stripe dashboard...','success')">Manage in Stripe →</button>
+    </div>
+
+    <!-- FEE TRANSPARENCY -->
+    <div class="section-head fade-up">
+      <div class="section-title">How earnings work</div>
+    </div>
+    <div class="fee-explainer fade-up">
+      <div class="fee-title">Every session breakdown</div>
+      <div class="fee-row"><span class="k">Driver pays</span><span class="v">100%</span></div>
+      <div class="fee-row"><span class="k">NestCharge platform fee</span><span class="v red">−20%</span></div>
+      <div class="fee-row"><span class="k">You receive</span><span class="v green">80%</span></div>
+      <div class="fee-example">
+        Example: Driver books a 2hr session at £0.30/hr = <strong>£0.60 total</strong>.<br>
+        NestCharge takes £0.12 (20%). <strong>You receive £0.48</strong> — paid weekly to your bank.
+      </div>
+    </div>
+
+    <!-- PAYOUT HISTORY -->
+    <div class="section-head fade-up">
+      <div class="section-title">Payout history</div>
+      <span style="font-size:0.78rem;color:var(--muted)" id="payout-count"></span>
+    </div>
+    <div class="payout-list fade-up" id="payout-list">
+      <div class="empty"><div class="empty-icon">⏳</div><div class="empty-title">Loading payouts...</div></div>
+    </div>
+
+    <!-- SESSIONS BREAKDOWN -->
+    <div class="section-head fade-up">
+      <div class="section-title">Session earnings</div>
+    </div>
+    <div class="payout-list fade-up" id="sessions-list">
+      <div class="empty"><div class="empty-icon">⏳</div><div class="empty-title">Loading sessions...</div></div>
+    </div>
+
+  </div>
+
+  <nav class="bottom-nav">
+    <a href="index.html" class="nav-item"><span class="nav-icon">🏠</span>Home</a>
+    <a href="map.html" class="nav-item"><span class="nav-icon">🗺</span>Find</a>
+    <a href="bookings.html" class="nav-item"><span class="nav-icon">📋</span>Bookings</a>
+    <a href="payments.html" class="nav-item"><span class="nav-icon">💳</span>Payments</a>
+    <a href="host-dashboard.html" class="nav-item active"><span class="nav-icon">⚡</span>Host</a>
+  </nav>
+
+  <div class="modal-overlay" id="modal-overlay" onclick="closeModal()"></div>
+  <div class="modal" id="modal"><div class="modal-handle"></div><div id="modal-body"></div></div>
+  <div class="toast" id="toast"></div>
+
+  <script>
+    const { createClient } = supabase;
+    const sb = createClient('https://ovhezomrlrfajrmwbdya.supabase.co','eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im92aGV6b21ybHJmYWpybXdiZHlhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE5NjM1MzEsImV4cCI6MjA4NzUzOTUzMX0.UTFUvtMKkyIIdJrc0GewWyTzAtONymUqZo_jJtT2ONI');
+    let currentUser = null, hostBookings = [], hostListings = [];
+
+    async function init() {
+      const { data: { session } } = await sb.auth.getSession();
+      if (!session) { window.location.href = 'auth.html'; return; }
+      currentUser = session.user;
+      await Promise.all([loadEarnings(), checkStripeConnect()]);
+    }
+
+    async function loadEarnings() {
+      // Get host's listings first
+      const { data: listings } = await sb.from('listings').select('id,name').eq('host_id', currentUser.id);
+      hostListings = listings || [];
+      const listingIds = hostListings.map(l => l.id);
+
+      if (!listingIds.length) {
+        setEmptyState(); return;
+      }
+
+      // Get all bookings for host's listings
+      const { data: bookings } = await sb.from('bookings')
+        .select('*, listings(name,speed,connector)')
+        .in('listing_id', listingIds)
+        .order('created_at', { ascending: false });
+
+      hostBookings = (bookings || []).filter(b => b.status !== 'cancelled' && b.status !== 'failed');
+
+      const total = hostBookings.reduce((s,b) => s + (parseFloat(b.host_payout || b.total_amount*0.8 || 0)), 0);
+      const now = new Date();
+      const thisMonth = hostBookings
+        .filter(b => { const d = new Date(b.created_at); return d.getMonth()===now.getMonth()&&d.getFullYear()===now.getFullYear(); })
+        .reduce((s,b) => s + (parseFloat(b.host_payout||b.total_amount*0.8||0)), 0);
+      const pending = hostBookings.filter(b => b.payout_status==='pending').reduce((s,b) => s + (parseFloat(b.host_payout||b.total_amount*0.8||0)), 0);
+      const avg = hostBookings.length ? total/hostBookings.length : 0;
+
+      document.getElementById('total-earned').textContent = total.toFixed(2);
+      document.getElementById('earn-sub').textContent = hostBookings.length ? `Across ${hostBookings.length} completed session${hostBookings.length!==1?'s':''}` : 'No sessions yet';
+      document.getElementById('stat-this-month').textContent = '£'+thisMonth.toFixed(2);
+      document.getElementById('stat-pending').textContent = '£'+pending.toFixed(2);
+      document.getElementById('stat-sessions').textContent = hostBookings.length;
+      document.getElementById('stat-avg').textContent = '£'+avg.toFixed(2);
+
+      if (pending > 0) {
+        document.getElementById('pending-banner').style.display = 'flex';
+        document.getElementById('pending-amt').textContent = '£'+pending.toFixed(2);
+      }
+
+      renderPayouts(hostBookings);
+      renderSessions(hostBookings);
+    }
+
+    function setEmptyState() {
+      document.getElementById('earn-sub').textContent = 'List your first charger to start earning';
+      ['payout-list','sessions-list'].forEach(id => {
+        document.getElementById(id).innerHTML = `<div class="empty"><div class="empty-icon">🔌</div><div class="empty-title">No sessions yet</div><div>Earnings appear here once drivers book your charger</div></div>`;
+      });
+    }
+
+    function renderPayouts(bookings) {
+      const el = document.getElementById('payout-list');
+      // Group into weekly payouts
+      const weeks = {};
+      bookings.forEach(b => {
+        const d = new Date(b.created_at);
+        const weekStart = new Date(d); weekStart.setDate(d.getDate()-d.getDay());
+        const key = weekStart.toISOString().slice(0,10);
+        if (!weeks[key]) weeks[key] = { date: weekStart, amount: 0, count: 0, status: 'paid' };
+        weeks[key].amount += parseFloat(b.host_payout||b.total_amount*0.8||0);
+        weeks[key].count++;
+      });
+
+      const payoutItems = Object.entries(weeks).sort((a,b) => b[0].localeCompare(a[0]));
+      document.getElementById('payout-count').textContent = payoutItems.length + ' payouts';
+
+      if (!payoutItems.length) {
+        el.innerHTML = `<div class="empty"><div class="empty-icon">💷</div><div class="empty-title">No payouts yet</div><div>Connect your bank account above to receive earnings</div></div>`;
+        return;
+      }
+
+      el.innerHTML = payoutItems.map(([key, p]) => {
+        const dateStr = p.date.toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'});
+        return `<div class="payout-item" onclick="openPayoutDetail('${key}')">
+          <div class="payout-icon completed">💷</div>
+          <div class="payout-info">
+            <div class="payout-name">Week of ${dateStr}</div>
+            <div class="payout-date">${p.count} session${p.count!==1?'s':''} · Barclays ···· 4521</div>
+          </div>
+          <div class="payout-right">
+            <div class="payout-amount">+£${p.amount.toFixed(2)}</div>
+            <div class="payout-status paid">Paid out</div>
+          </div>
+        </div>`;
+      }).join('');
+    }
+
+    function renderSessions(bookings) {
+      const el = document.getElementById('sessions-list');
+      if (!bookings.length) {
+        el.innerHTML = `<div class="empty"><div class="empty-icon">⚡</div><div class="empty-title">No sessions yet</div><div>Each charging session will appear here with full breakdown</div></div>`;
+        return;
+      }
+      el.innerHTML = bookings.map(b => {
+        const total = parseFloat(b.total_amount||0);
+        const fee = total*0.2;
+        const payout = total*0.8;
+        const date = new Date(b.created_at).toLocaleDateString('en-GB',{day:'numeric',month:'short'});
+        const name = b.listings?.name||'Charging session';
+        return `<div class="payout-item" onclick="openSessionDetail('${b.id}')">
+          <div class="payout-icon completed">⚡</div>
+          <div class="payout-info">
+            <div class="payout-name">${name}</div>
+            <div class="payout-date">${date} · Driver paid £${total.toFixed(2)}</div>
+          </div>
+          <div class="payout-right">
+            <div class="payout-amount">+£${payout.toFixed(2)}</div>
+            <div class="payout-status paid">Your share</div>
+          </div>
+        </div>`;
+      }).join('');
+    }
+
+    function openSessionDetail(id) {
+      const b = hostBookings.find(x => x.id===id);
+      if (!b) return;
+      const total = parseFloat(b.total_amount||0);
+      const fee = (total*0.2).toFixed(2);
+      const payout = (total*0.8).toFixed(2);
+      const date = new Date(b.created_at).toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long'});
+      const ref = b.reference||'NC-'+b.id.slice(0,8).toUpperCase();
+      document.getElementById('modal-body').innerHTML = `
+        <div class="modal-title">Session breakdown</div>
+        <div style="background:linear-gradient(135deg,rgba(0,212,148,0.07),rgba(0,170,255,0.04));border:1px solid rgba(0,212,148,0.13);border-radius:1.25rem;padding:1.5rem;margin-bottom:1.25rem;text-align:center">
+          <div style="font-size:0.75rem;color:var(--muted);margin-bottom:0.4rem">Your earnings</div>
+          <div style="font-family:var(--font-head);font-size:2rem;font-weight:800;color:var(--accent)">£${payout}</div>
+          <div style="font-size:0.8rem;color:var(--muted);margin-top:0.3rem">${b.listings?.name||'Session'}</div>
+        </div>
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:1rem;padding:1rem 1.1rem;margin-bottom:1.1rem">
+          <div style="font-size:0.7rem;font-weight:600;text-transform:uppercase;letter-spacing:0.09em;color:var(--muted);margin-bottom:0.75rem">Full breakdown</div>
+          <div class="detail-row"><span class="k">Driver paid</span><span class="v">£${total.toFixed(2)}</span></div>
+          <div class="detail-row"><span class="k">NestCharge fee (20%)</span><span class="v" style="color:var(--error)">−£${fee}</span></div>
+          <div class="detail-row" style="font-weight:600"><span class="k" style="color:var(--text)">You receive (80%)</span><span class="v" style="color:var(--accent);font-family:var(--font-head)">£${payout}</span></div>
+        </div>
+        <div class="detail-rows">
+          <div class="detail-row"><span class="k">Date</span><span class="v">${date}</span></div>
+          <div class="detail-row"><span class="k">Duration</span><span class="v">${b.duration_hours||1} hour${(b.duration_hours||1)!==1?'s':''}</span></div>
+          <div class="detail-row"><span class="k">Reference</span><span class="v" style="font-family:monospace;font-size:0.78rem;color:var(--accent)">${ref}</span></div>
+          <div class="detail-row"><span class="k">Payout status</span><span class="v" style="color:var(--accent)">✓ Paid to bank</span></div>
+        </div>
+        <button class="modal-btn modal-btn-neutral" onclick="closeModal()">Close</button>`;
+      openModal();
+    }
+
+    function openPayoutDetail(weekKey) {
+      showToast('Payout details coming soon','success');
+    }
+
+    async function checkStripeConnect() {
+      const { data } = await sb.from('profiles').select('stripe_account_id,stripe_connected').eq('id', currentUser.id).single();
+      if (data?.stripe_connected) {
+        document.getElementById('stripe-banner').style.display = 'none';
+        document.getElementById('stripe-connected').style.display = 'block';
+        if (data.bank_last4) document.getElementById('bank-detail').textContent = 'Bank ···· '+data.bank_last4;
+      }
+    }
+
+    function connectStripe() {
+      // In production: redirect to Stripe Connect OAuth URL
+      // For now show onboarding info
+      document.getElementById('modal-body').innerHTML = `
+        <div class="modal-title">Set up bank account</div>
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:1rem;padding:1.1rem;margin-bottom:1.25rem">
+          <div style="font-size:0.75rem;font-weight:600;text-transform:uppercase;letter-spacing:0.08em;color:var(--muted);margin-bottom:0.875rem">What you'll need</div>
+          <div style="display:flex;flex-direction:column;gap:0.6rem">
+            ${['UK bank account (sort code + account number)','Proof of identity (passport or driving licence)','Your NI number or UTR (for self-assessment)','2 minutes of your time'].map(item=>`<div style="display:flex;gap:0.625rem;font-size:0.84rem"><span style="color:var(--accent)">✓</span><span style="color:var(--muted)">${item}</span></div>`).join('')}
+          </div>
+        </div>
+        <div style="background:rgba(99,91,255,0.06);border:1px solid rgba(99,91,255,0.2);border-radius:1rem;padding:1rem;margin-bottom:1.25rem;font-size:0.8rem;color:var(--muted);line-height:1.6">
+          You'll be redirected to <strong style="color:var(--text)">Stripe</strong> — the same payment processor used by Amazon, Shopify and Airbnb. NestCharge never sees your bank details.
+        </div>
+        <button class="modal-btn" style="background:#635bff;color:#fff;font-family:var(--font-head);font-weight:700;border:none;padding:0.9rem;border-radius:100px;cursor:pointer;width:100%;margin-bottom:0.6rem;font-size:0.9rem" onclick="launchStripeConnect()">Continue to Stripe →</button>
+        <button class="modal-btn modal-btn-neutral" onclick="closeModal()">Not now</button>`;
+      openModal();
+    }
+
+    async function launchStripeConnect() {
+      // In production: call your backend to create a Stripe Connect account link
+      // Then: window.location.href = stripeConnectUrl;
+      closeModal();
+      showToast('Stripe Connect — activate your account at dashboard.stripe.com','success');
+    }
+
+    function openModal() { document.getElementById('modal-overlay').classList.add('show'); document.getElementById('modal').classList.add('open'); }
+    function closeModal() { document.getElementById('modal-overlay').classList.remove('show'); document.getElementById('modal').classList.remove('open'); }
+
+    function showToast(msg, type='success') {
+      const el = document.getElementById('toast');
+      el.textContent=msg; el.className='toast show '+type;
+      setTimeout(()=>el.className='toast',3500);
+    }
+
+    init();
+  </script>
+</body>
+</html>

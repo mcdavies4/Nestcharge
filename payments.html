@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Payments — NestCharge</title>
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+  <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+  <meta name="theme-color" content="#070c1a" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet" />
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #070c1a; --bg2: #0d1428; --surface: #131d2e; --surface2: #1c2840;
+      --border: rgba(255,255,255,0.09); --accent: #00d494; --accent2: #0af;
+      --text: #dde3f0; --muted: #9aa3b5; --error: #ff5e7d; --warning: #f59e0b;
+      --font-head: 'Syne', sans-serif; --font-body: 'DM Sans', sans-serif;
+    }
+    html { overflow-x: hidden; }
+    body { min-height: 100vh; font-family: var(--font-body); background: var(--bg); color: var(--text); font-weight: 300; padding-bottom: 6rem; }
+    .topbar { background: var(--bg2); border-bottom: 1px solid var(--border); padding: 1rem 1.25rem; display: flex; align-items: center; gap: 0.875rem; position: sticky; top: 0; z-index: 40; }
+    .back-btn { width: 36px; height: 36px; border-radius: 50%; background: var(--surface); border: 1px solid var(--border); display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 1rem; flex-shrink: 0; text-decoration: none; color: var(--text); }
+    .topbar-title { font-family: var(--font-head); font-size: 1rem; font-weight: 700; }
+    .topbar-sub { font-size: 0.75rem; color: var(--muted); margin-top: 0.1rem; }
+    .content { max-width: 560px; margin: 0 auto; padding: 1.25rem; }
+    .balance-hero { background: linear-gradient(135deg, #0a1f14 0%, #0a1628 100%); border: 1px solid rgba(0,212,148,0.15); border-radius: 1.5rem; padding: 1.75rem; margin-bottom: 1.5rem; position: relative; overflow: hidden; }
+    .balance-hero::before { content: ''; position: absolute; top: -50px; right: -50px; width: 180px; height: 180px; border-radius: 50%; background: radial-gradient(circle, rgba(0,212,148,0.07) 0%, transparent 70%); pointer-events: none; }
+    .balance-label { font-size: 0.72rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted); margin-bottom: 0.5rem; }
+    .balance-amount { font-family: var(--font-head); font-size: 2.4rem; font-weight: 800; color: var(--text); line-height: 1; margin-bottom: 0.4rem; }
+    .balance-amount .currency { color: var(--muted); font-size: 1.4rem; }
+    .balance-amount .value { color: var(--accent); }
+    .balance-sub { font-size: 0.8rem; color: var(--muted); }
+    .balance-stats { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0; margin-top: 1.25rem; padding-top: 1.25rem; border-top: 1px solid rgba(255,255,255,0.07); }
+    .bal-stat { text-align: center; }
+    .bal-stat:not(:last-child) { border-right: 1px solid rgba(255,255,255,0.07); }
+    .bal-stat-val { font-family: var(--font-head); font-size: 1.05rem; font-weight: 700; }
+    .bal-stat-label { font-size: 0.67rem; color: var(--muted); margin-top: 0.2rem; }
+    .section-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.875rem; margin-top: 1.75rem; }
+    .section-title { font-family: var(--font-head); font-size: 0.9rem; font-weight: 700; }
+    .cards-wrap { display: flex; flex-direction: column; gap: 0.625rem; }
+    .card-item { background: var(--surface); border: 1px solid var(--border); border-radius: 1.125rem; padding: 1rem 1.25rem; display: flex; align-items: center; gap: 1rem; }
+    .card-item.default { border-color: rgba(0,212,148,0.2); }
+    .card-chip { width: 44px; height: 30px; border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 0.7rem; font-weight: 700; color: #fff; flex-shrink: 0; letter-spacing: 0.02em; }
+    .card-chip.visa { background: linear-gradient(135deg, #1a1f71, #2563eb); }
+    .card-chip.mastercard { background: linear-gradient(135deg, #b91c1c, #d97706); }
+    .card-chip.amex { background: linear-gradient(135deg, #0369a1, #0ea5e9); }
+    .card-info { flex: 1; }
+    .card-name { font-size: 0.88rem; font-weight: 500; }
+    .card-detail { font-size: 0.73rem; color: var(--muted); margin-top: 0.15rem; }
+    .card-badge { font-size: 0.63rem; background: rgba(0,212,148,0.1); color: var(--accent); border: 1px solid rgba(0,212,148,0.18); padding: 0.15rem 0.5rem; border-radius: 100px; font-weight: 600; white-space: nowrap; }
+    .card-menu { font-size: 1.2rem; color: var(--muted); cursor: pointer; padding: 0.25rem; background: none; border: none; }
+    .add-card-btn { background: none; border: 1px dashed rgba(255,255,255,0.13); border-radius: 1.125rem; padding: 0.875rem 1.25rem; display: flex; align-items: center; gap: 0.75rem; color: var(--muted); font-size: 0.85rem; font-family: var(--font-body); cursor: pointer; width: 100%; transition: all 0.2s; }
+    .add-card-btn:hover { border-color: rgba(0,212,148,0.3); color: var(--accent); }
+    .tx-list { display: flex; flex-direction: column; gap: 0.5rem; }
+    .tx-item { background: var(--surface); border: 1px solid var(--border); border-radius: 1.125rem; padding: 1rem 1.25rem; display: flex; align-items: center; gap: 1rem; cursor: pointer; transition: border-color 0.2s; }
+    .tx-item:hover { border-color: rgba(255,255,255,0.15); }
+    .tx-icon { width: 42px; height: 42px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.1rem; flex-shrink: 0; }
+    .tx-icon.charge { background: rgba(0,212,148,0.1); }
+    .tx-icon.refund { background: rgba(245,158,11,0.1); }
+    .tx-icon.failed { background: rgba(255,94,125,0.1); }
+    .tx-info { flex: 1; min-width: 0; }
+    .tx-name { font-size: 0.88rem; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .tx-date { font-size: 0.73rem; color: var(--muted); margin-top: 0.15rem; }
+    .tx-right { text-align: right; flex-shrink: 0; }
+    .tx-amount { font-family: var(--font-head); font-size: 0.95rem; font-weight: 700; }
+    .tx-amount.debit { color: var(--text); }
+    .tx-amount.refund { color: var(--warning); }
+    .tx-amount.failed { color: var(--error); }
+    .tx-status { font-size: 0.68rem; margin-top: 0.2rem; }
+    .tx-status.paid { color: var(--accent); }
+    .tx-status.refunded { color: var(--warning); }
+    .tx-status.failed { color: var(--error); }
+    .empty { text-align: center; padding: 2.5rem 1rem; color: var(--muted); font-size: 0.85rem; background: var(--surface); border: 1px solid var(--border); border-radius: 1.25rem; }
+    .empty-icon { font-size: 2rem; margin-bottom: 0.75rem; }
+    .empty-title { color: var(--text); font-weight: 500; margin-bottom: 0.3rem; font-size: 0.9rem; }
+    .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.75); z-index: 100; opacity: 0; pointer-events: none; transition: opacity 0.3s; }
+    .modal-overlay.show { opacity: 1; pointer-events: all; }
+    .modal { position: fixed; bottom: 0; left: 0; right: 0; background: var(--bg2); border-radius: 1.75rem 1.75rem 0 0; border-top: 1px solid var(--border); padding: 0 1.5rem 2rem; z-index: 101; transform: translateY(100%); transition: transform 0.38s cubic-bezier(0.32,0.72,0,1); max-width: 560px; margin: 0 auto; max-height: 90vh; overflow-y: auto; }
+    .modal.open { transform: translateY(0); }
+    .modal-handle { width: 40px; height: 4px; background: rgba(255,255,255,0.1); border-radius: 100px; margin: 1rem auto 1.5rem; flex-shrink: 0; }
+    .modal-title { font-family: var(--font-head); font-size: 1.05rem; font-weight: 800; margin-bottom: 1.25rem; }
+    .receipt-header { background: linear-gradient(135deg, rgba(0,212,148,0.07), rgba(0,170,255,0.04)); border: 1px solid rgba(0,212,148,0.13); border-radius: 1.25rem; padding: 1.5rem; margin-bottom: 1.25rem; text-align: center; }
+    .receipt-amount { font-family: var(--font-head); font-size: 2.2rem; font-weight: 800; color: var(--accent); }
+    .receipt-desc { font-size: 0.82rem; color: var(--muted); margin-top: 0.3rem; }
+    .receipt-badge { display: inline-block; margin-top: 0.6rem; font-size: 0.72rem; padding: 0.2rem 0.65rem; border-radius: 100px; font-weight: 600; }
+    .receipt-badge.paid { background: rgba(0,212,148,0.1); color: var(--accent); border: 1px solid rgba(0,212,148,0.2); }
+    .receipt-badge.refunded { background: rgba(245,158,11,0.1); color: var(--warning); border: 1px solid rgba(245,158,11,0.2); }
+    .receipt-badge.failed { background: rgba(255,94,125,0.1); color: var(--error); border: 1px solid rgba(255,94,125,0.2); }
+    .breakdown-box { background: var(--surface); border: 1px solid var(--border); border-radius: 1rem; padding: 1rem 1.1rem; margin-bottom: 1.1rem; }
+    .breakdown-title { font-size: 0.7rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.09em; color: var(--muted); margin-bottom: 0.75rem; }
+    .breakdown-row { display: flex; justify-content: space-between; font-size: 0.83rem; padding: 0.28rem 0; color: var(--muted); }
+    .breakdown-row span:last-child { color: var(--text); }
+    .breakdown-row.total { border-top: 1px solid var(--border); margin-top: 0.4rem; padding-top: 0.65rem; font-weight: 600; color: var(--text); }
+    .breakdown-row.total span:last-child { color: var(--accent); font-family: var(--font-head); }
+    .detail-rows { display: flex; flex-direction: column; margin-bottom: 1.1rem; }
+    .detail-row { display: flex; justify-content: space-between; align-items: center; padding: 0.7rem 0; border-bottom: 1px solid var(--border); font-size: 0.84rem; }
+    .detail-row:last-child { border-bottom: none; }
+    .detail-row .k { color: var(--muted); }
+    .detail-row .v { font-weight: 500; text-align: right; max-width: 60%; }
+    .modal-btn { width: 100%; padding: 0.9rem; border-radius: 100px; font-family: var(--font-head); font-size: 0.9rem; font-weight: 700; cursor: pointer; border: none; margin-bottom: 0.6rem; transition: opacity 0.2s; }
+    .modal-btn:hover { opacity: 0.85; }
+    .modal-btn-accent { background: var(--accent); color: #000; }
+    .modal-btn-outline { background: none; color: var(--error); border: 1px solid rgba(255,94,125,0.25); font-family: var(--font-body); font-weight: 400; }
+    .modal-btn-neutral { background: var(--surface2); color: var(--text); border: 1px solid var(--border); font-family: var(--font-body); font-weight: 400; }
+    .form-group { margin-bottom: 1rem; }
+    .form-label { font-size: 0.73rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.07em; color: var(--muted); margin-bottom: 0.4rem; display: block; }
+    .form-input { width: 100%; background: var(--surface); border: 1px solid var(--border); color: var(--text); padding: 0.875rem 1rem; border-radius: 0.875rem; font-family: var(--font-body); font-size: 0.92rem; outline: none; transition: border-color 0.2s; }
+    .form-input:focus { border-color: rgba(0,212,148,0.4); }
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; }
+    .secure-note { display: flex; align-items: center; gap: 0.5rem; font-size: 0.75rem; color: var(--muted); margin-bottom: 1.1rem; background: var(--surface); border: 1px solid var(--border); border-radius: 0.75rem; padding: 0.6rem 0.875rem; }
+    .bottom-nav { position: fixed; bottom: 0; left: 0; right: 0; background: rgba(13,20,40,0.97); backdrop-filter: blur(20px); border-top: 1px solid var(--border); display: flex; padding: 0.625rem 0 1.25rem; z-index: 50; }
+    .nav-item { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 0.25rem; text-decoration: none; color: var(--muted); font-size: 0.6rem; font-weight: 500; text-transform: uppercase; letter-spacing: 0.05em; padding: 0.25rem 0; transition: color 0.2s; }
+    .nav-item.active { color: var(--accent); }
+    .nav-icon { font-size: 1.25rem; line-height: 1; }
+    .toast { position: fixed; bottom: 5.5rem; left: 50%; transform: translateX(-50%) translateY(60px); background: var(--surface); border: 1px solid var(--border); border-radius: 100px; padding: 0.7rem 1.5rem; font-size: 0.83rem; z-index: 200; transition: transform 0.4s cubic-bezier(0.34,1.56,0.64,1); white-space: nowrap; opacity: 0; }
+    .toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
+    .toast.success { border-color: rgba(0,212,148,0.3); color: var(--accent); }
+    .toast.error { border-color: rgba(255,94,125,0.3); color: var(--error); }
+    @keyframes fadeUp { from { opacity:0; transform:translateY(14px); } to { opacity:1; transform:translateY(0); } }
+    .fade-up { opacity:0; animation: fadeUp 0.4s ease forwards; }
+    .fade-up:nth-child(1){animation-delay:0.05s} .fade-up:nth-child(2){animation-delay:0.1s} .fade-up:nth-child(3){animation-delay:0.15s} .fade-up:nth-child(4){animation-delay:0.2s}
+  </style>
+</head>
+<body>
+  <div class="topbar">
+    <a class="back-btn" href="bookings.html">←</a>
+    <div>
+      <div class="topbar-title">Payments</div>
+      <div class="topbar-sub">Your spending & cards</div>
+    </div>
+  </div>
+
+  <div class="content">
+    <div class="balance-hero fade-up">
+      <div class="balance-label">Total spent on NestCharge</div>
+      <div class="balance-amount"><span class="currency">£</span><span class="value" id="total-spent">0.00</span></div>
+      <div class="balance-sub" id="spend-sub">Loading your history...</div>
+      <div class="balance-stats">
+        <div class="bal-stat"><div class="bal-stat-val" id="stat-sessions">0</div><div class="bal-stat-label">Sessions</div></div>
+        <div class="bal-stat"><div class="bal-stat-val" id="stat-avg">£0</div><div class="bal-stat-label">Avg session</div></div>
+        <div class="bal-stat"><div class="bal-stat-val" id="stat-saved">£0</div><div class="bal-stat-label">Saved vs public</div></div>
+      </div>
+    </div>
+
+    <div class="section-head fade-up">
+      <div class="section-title">Payment methods</div>
+    </div>
+    <div class="cards-wrap fade-up" id="cards-wrap">
+      <div class="empty"><div class="empty-icon">💳</div><div class="empty-title">Loading cards...</div></div>
+    </div>
+
+    <div class="section-head fade-up">
+      <div class="section-title">Transaction history</div>
+      <span style="font-size:0.78rem;color:var(--muted)" id="tx-count"></span>
+    </div>
+    <div class="tx-list fade-up" id="tx-list">
+      <div class="empty"><div class="empty-icon">⏳</div><div class="empty-title">Loading...</div></div>
+    </div>
+  </div>
+
+  <nav class="bottom-nav">
+    <a href="index.html" class="nav-item"><span class="nav-icon">🏠</span>Home</a>
+    <a href="map.html" class="nav-item"><span class="nav-icon">🗺</span>Find</a>
+    <a href="bookings.html" class="nav-item"><span class="nav-icon">📋</span>Bookings</a>
+    <a href="payments.html" class="nav-item active"><span class="nav-icon">💳</span>Payments</a>
+    <a href="host-dashboard.html" class="nav-item"><span class="nav-icon">⚡</span>Host</a>
+  </nav>
+
+  <div class="modal-overlay" id="modal-overlay" onclick="closeModal()"></div>
+  <div class="modal" id="modal"><div class="modal-handle"></div><div id="modal-body"></div></div>
+
+  <div class="modal-overlay" id="card-overlay" onclick="closeCardModal()"></div>
+  <div class="modal" id="card-modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title">Add payment method</div>
+    <div class="secure-note">🔒 Secured by Stripe — NestCharge never stores your full card number</div>
+    <div class="form-group"><label class="form-label">Name on card</label><input class="form-input" type="text" placeholder="Full name" id="card-name" /></div>
+    <div class="form-group"><label class="form-label">Card number</label><input class="form-input" type="text" placeholder="1234 5678 9012 3456" maxlength="19" id="card-number" oninput="formatCard(this)" /></div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">Expiry</label><input class="form-input" type="text" placeholder="MM / YY" maxlength="7" id="card-expiry" oninput="formatExpiry(this)" /></div>
+      <div class="form-group"><label class="form-label">CVC</label><input class="form-input" type="text" placeholder="123" maxlength="4" id="card-cvc" /></div>
+    </div>
+    <button class="modal-btn modal-btn-accent" onclick="saveCard()">Save card securely</button>
+    <button class="modal-btn modal-btn-neutral" onclick="closeCardModal()">Cancel</button>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <script>
+    const { createClient } = supabase;
+    const sb = createClient('https://ovhezomrlrfajrmwbdya.supabase.co','eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im92aGV6b21ybHJmYWpybXdiZHlhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE5NjM1MzEsImV4cCI6MjA4NzUzOTUzMX0.UTFUvtMKkyIIdJrc0GewWyTzAtONymUqZo_jJtT2ONI');
+    let currentUser = null, allBookings = [], savedCards = [];
+
+    async function init() {
+      const { data: { session } } = await sb.auth.getSession();
+      if (!session) { window.location.href = 'auth.html'; return; }
+      currentUser = session.user;
+      await Promise.all([loadBookings(), loadCards()]);
+    }
+
+    async function loadBookings() {
+      const { data } = await sb.from('bookings').select('*, listings(name,speed,connector)').eq('driver_id', currentUser.id).order('created_at', { ascending: false });
+      allBookings = data || [];
+      const total = allBookings.reduce((s,b) => s + (parseFloat(b.total_amount)||0), 0);
+      const avg = allBookings.length ? total/allBookings.length : 0;
+      const saved = total * 2;
+      document.getElementById('total-spent').textContent = total.toFixed(2);
+      document.getElementById('spend-sub').textContent = allBookings.length ? `Across ${allBookings.length} session${allBookings.length!==1?'s':''}` : 'No sessions yet — book your first charge';
+      document.getElementById('stat-sessions').textContent = allBookings.length;
+      document.getElementById('stat-avg').textContent = '£' + avg.toFixed(2);
+      document.getElementById('stat-saved').textContent = '£' + saved.toFixed(2);
+      document.getElementById('tx-count').textContent = allBookings.length + ' transactions';
+      renderTransactions(allBookings);
+    }
+
+    function renderTransactions(bookings) {
+      const el = document.getElementById('tx-list');
+      if (!bookings.length) {
+        el.innerHTML = `<div class="empty"><div class="empty-icon">💳</div><div class="empty-title">No transactions yet</div><div>Your charging sessions will appear here</div></div>`;
+        return;
+      }
+      el.innerHTML = bookings.map(b => {
+        const status = b.status || 'completed';
+        const isRefund = status === 'refunded' || status === 'cancelled';
+        const isFailed = status === 'failed';
+        const date = new Date(b.created_at).toLocaleDateString('en-GB', {day:'numeric',month:'short',year:'numeric'});
+        const name = b.listings?.name || 'Charging session';
+        const icon = isRefund ? '↩️' : isFailed ? '❌' : '⚡';
+        const cls = isRefund ? 'refund' : isFailed ? 'failed' : 'charge';
+        const amt = isRefund ? '+£' : '−£';
+        return `<div class="tx-item" onclick="openReceipt('${b.id}')">
+          <div class="tx-icon ${cls}">${icon}</div>
+          <div class="tx-info"><div class="tx-name">${name}</div><div class="tx-date">${date}</div></div>
+          <div class="tx-right">
+            <div class="tx-amount ${isRefund?'refund':isFailed?'failed':'debit'}">${amt}${parseFloat(b.total_amount||0).toFixed(2)}</div>
+            <div class="tx-status ${isRefund?'refunded':isFailed?'failed':'paid'}">${isRefund?'Refunded':isFailed?'Failed':'Paid'}</div>
+          </div>
+        </div>`;
+      }).join('');
+    }
+
+    async function loadCards() {
+      const { data } = await sb.from('payment_methods').select('*').eq('user_id', currentUser.id).order('created_at', { ascending: false });
+      savedCards = data || [];
+      const el = document.getElementById('cards-wrap');
+      const brandClass = b => b==='mastercard'?'mastercard':b==='amex'?'amex':'visa';
+      const brandLabel = b => b==='mastercard'?'MC':b==='amex'?'AMEX':'VISA';
+      const html = savedCards.map((c,i) => {
+        const brand = c.brand||'visa';
+        const expiry = c.exp_month&&c.exp_year ? `${String(c.exp_month).padStart(2,'0')}/${String(c.exp_year).slice(-2)}` : '—';
+        const isDefault = c.is_default||i===0;
+        return `<div class="card-item${isDefault?' default':''}">
+          <div class="card-chip ${brandClass(brand)}">${brandLabel(brand)}</div>
+          <div class="card-info"><div class="card-name">${brand.charAt(0).toUpperCase()+brand.slice(1)} ···· ${c.last4||'****'}</div><div class="card-detail">Expires ${expiry}</div></div>
+          ${isDefault?'<span class="card-badge">Default</span>':''}
+          <button class="card-menu" onclick="removeCard('${c.id}')">✕</button>
+        </div>`;
+      }).join('');
+      el.innerHTML = html + `<button class="add-card-btn" onclick="openCardModal()"><span style="font-size:1.2rem;line-height:1">＋</span> Add payment method</button>`;
+    }
+
+    function openReceipt(id) {
+      const b = allBookings.find(x => x.id===id);
+      if (!b) return;
+      const total = parseFloat(b.total_amount||0);
+      const serviceFee = parseFloat(b.service_fee||total*0.05||0);
+      const hostAmount = total - serviceFee;
+      const ref = b.reference||'NC-'+b.id.slice(0,8).toUpperCase();
+      const date = new Date(b.created_at).toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
+      const status = b.status||'completed';
+      const isRefund = status==='refunded'||status==='cancelled';
+      const isFailed = status==='failed';
+      const badgeCls = isRefund?'refunded':isFailed?'failed':'paid';
+      const badgeLabel = isRefund?'↩ Refunded':isFailed?'❌ Failed':'✅ Paid';
+      document.getElementById('modal-body').innerHTML = `
+        <div class="modal-title">Receipt</div>
+        <div class="receipt-header">
+          <div class="receipt-amount">£${total.toFixed(2)}</div>
+          <div class="receipt-desc">${b.listings?.name||'Charging session'}</div>
+          <span class="receipt-badge ${badgeCls}">${badgeLabel}</span>
+        </div>
+        <div class="breakdown-box">
+          <div class="breakdown-title">Where your money goes</div>
+          <div class="breakdown-row"><span>Charging session (host)</span><span>£${hostAmount.toFixed(2)}</span></div>
+          <div class="breakdown-row"><span>NestCharge service fee</span><span>£${serviceFee.toFixed(2)}</span></div>
+          <div class="breakdown-row total"><span>Total charged</span><span>£${total.toFixed(2)}</span></div>
+        </div>
+        <div class="detail-rows">
+          <div class="detail-row"><span class="k">Date</span><span class="v">${date}</span></div>
+          <div class="detail-row"><span class="k">Time slot</span><span class="v">${b.time_slot||b.booking_time||'—'}</span></div>
+          <div class="detail-row"><span class="k">Duration</span><span class="v">${b.duration_hours||1} hour${(b.duration_hours||1)!==1?'s':''}</span></div>
+          <div class="detail-row"><span class="k">Charger</span><span class="v">${b.listings?.connector||'Type 2'} · ${b.listings?.speed||'—'}kW</span></div>
+          <div class="detail-row"><span class="k">Reference</span><span class="v" style="font-family:monospace;font-size:0.78rem;color:var(--accent)">${ref}</span></div>
+        </div>
+        <button class="modal-btn modal-btn-accent" onclick="showToast('Receipt PDF coming soon','success');closeModal()">📄 Download PDF receipt</button>
+        ${!isRefund&&!isFailed?`<button class="modal-btn modal-btn-outline" onclick="requestRefund('${b.id}')">Request refund</button>`:''}
+        <button class="modal-btn modal-btn-neutral" onclick="closeModal()">Close</button>`;
+      openModal();
+    }
+
+    async function requestRefund(id) {
+      await sb.from('bookings').update({status:'refund_requested'}).eq('id',id);
+      closeModal();
+      showToast('Refund requested — we review within 24hrs','success');
+      await loadBookings();
+    }
+
+    async function removeCard(id) {
+      await sb.from('payment_methods').delete().eq('id',id);
+      showToast('Card removed','success');
+      await loadCards();
+    }
+
+    function openCardModal() { document.getElementById('card-overlay').classList.add('show'); document.getElementById('card-modal').classList.add('open'); }
+    function closeCardModal() { document.getElementById('card-overlay').classList.remove('show'); document.getElementById('card-modal').classList.remove('open'); }
+
+    async function saveCard() {
+      const num = document.getElementById('card-number').value.replace(/\s/g,'');
+      const expiry = document.getElementById('card-expiry').value;
+      const cvc = document.getElementById('card-cvc').value;
+      const name = document.getElementById('card-name').value;
+      if (num.length<16||!expiry||cvc.length<3||!name) { showToast('Please fill in all details','error'); return; }
+      const last4 = num.slice(-4);
+      const parts = expiry.replace(/\s/g,'').split('/');
+      const { error } = await sb.from('payment_methods').insert({ user_id:currentUser.id, last4, brand:'visa', exp_month:parseInt(parts[0]), exp_year:parseInt('20'+parts[1]), is_default:savedCards.length===0 });
+      if (error) { showToast('Could not save card','error'); return; }
+      closeCardModal();
+      showToast('Card saved securely','success');
+      await loadCards();
+    }
+
+    function openModal() { document.getElementById('modal-overlay').classList.add('show'); document.getElementById('modal').classList.add('open'); }
+    function closeModal() { document.getElementById('modal-overlay').classList.remove('show'); document.getElementById('modal').classList.remove('open'); }
+
+    function formatCard(el) { let v=el.value.replace(/\D/g,'').slice(0,16); el.value=v.replace(/(.{4})/g,'$1 ').trim(); }
+    function formatExpiry(el) { let v=el.value.replace(/\D/g,'').slice(0,4); if(v.length>=2) v=v.slice(0,2)+' / '+v.slice(2); el.value=v; }
+
+    function showToast(msg, type='success') {
+      const el = document.getElementById('toast');
+      el.textContent = msg; el.className='toast show '+type;
+      setTimeout(()=>el.className='toast', 3500);
+    }
+
+    init();
+  </script>
+</body>
+</html>
