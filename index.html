@@ -595,7 +595,10 @@
   <!-- NAV -->
   <nav>
     <div class="logo">Nest<span>Charge</span></div>
-    <button class="nav-cta" onclick="document.getElementById('waitlist').scrollIntoView({behavior:'smooth'})">Join Waitlist</button>
+    <div style="display:flex;gap:0.625rem;align-items:center">
+      <a href="auth.html" style="font-size:0.85rem;color:var(--muted);text-decoration:none">Sign in</a>
+      <a href="auth.html?role=driver" class="nav-cta" style="text-decoration:none">Get Started</a>
+    </div>
   </nav>
 
   <!-- HERO -->
@@ -604,8 +607,8 @@
     <h1>Charge your EV from your <em>neighbours</em></h1>
     <p class="hero-sub">No driveway? No problem. NestCharge connects EV drivers with nearby hosts who have a spare charger — book in seconds, charge like you're home.</p>
     <div class="hero-actions">
-      <button class="btn-primary" onclick="document.getElementById('waitlist').scrollIntoView({behavior:'smooth'})">Get Early Access</button>
-      <button class="btn-outline" onclick="document.getElementById('how').scrollIntoView({behavior:'smooth'})">See How It Works</button>
+      <a href="auth.html?role=driver" class="btn-primary" style="text-decoration:none;display:inline-flex;align-items:center;gap:0.4rem">🗺 Find a Charger</a>
+      <a href="auth.html?role=host" class="btn-outline" style="text-decoration:none;display:inline-flex;align-items:center;gap:0.4rem">🏠 List Your Charger</a>
     </div>
 
     <!-- Phone mockup -->
@@ -756,25 +759,41 @@
     </div>
   </section>
 
-  <!-- WAITLIST -->
-  <section id="waitlist">
+  <!-- JOIN SECTION -->
+  <section id="join">
     <div class="waitlist-wrap">
-      <p class="section-tag reveal">Early Access</p>
-      <h2 class="section-title reveal">Be first in your neighbourhood</h2>
-      <p style="color:var(--muted);margin-top:1rem;font-size:0.95rem;" class="reveal">Join the waitlist as a driver or host. We're launching area by area — the sooner you sign up, the sooner your postcode goes live.</p>
+      <p class="section-tag reveal">Join NestCharge</p>
+      <h2 class="section-title reveal">Ready to get started?</h2>
+      <p style="color:var(--muted);margin-top:1rem;font-size:0.95rem;" class="reveal">Create your free account in 60 seconds. No waiting, no approval needed — the platform is open now.</p>
 
-      <div class="waitlist-toggle reveal">
-        <button class="toggle-btn active" id="btn-driver" onclick="setRole('driver')">🚗 I'm a Driver</button>
-        <button class="toggle-btn" id="btn-host" onclick="setRole('host')">🏠 I'm a Host</button>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-top:2rem" class="reveal">
+        <a href="auth.html?role=driver" style="text-decoration:none;background:var(--surface);border:1px solid var(--border);border-radius:1.25rem;padding:1.5rem 1rem;text-align:center;display:block;transition:border-color 0.2s" onmouseover="this.style.borderColor='rgba(0,212,148,0.3)'" onmouseout="this.style.borderColor='rgba(255,255,255,0.09)'">
+          <div style="font-size:2rem;margin-bottom:0.5rem">🚗</div>
+          <div style="font-family:var(--font-head);font-weight:700;font-size:1rem;color:var(--text);margin-bottom:0.3rem">I'm a Driver</div>
+          <div style="font-size:0.78rem;color:var(--muted);margin-bottom:1rem">Find and book chargers near me</div>
+          <div style="background:var(--accent);color:#000;font-family:var(--font-head);font-weight:700;font-size:0.85rem;padding:0.6rem 1rem;border-radius:100px">Sign up free →</div>
+        </a>
+        <a href="auth.html?role=host" style="text-decoration:none;background:var(--surface);border:1px solid var(--border);border-radius:1.25rem;padding:1.5rem 1rem;text-align:center;display:block;transition:border-color 0.2s" onmouseover="this.style.borderColor='rgba(0,212,148,0.3)'" onmouseout="this.style.borderColor='rgba(255,255,255,0.09)'">
+          <div style="font-size:2rem;margin-bottom:0.5rem">🏠</div>
+          <div style="font-family:var(--font-head);font-weight:700;font-size:1rem;color:var(--text);margin-bottom:0.3rem">I'm a Host</div>
+          <div style="font-size:0.78rem;color:var(--muted);margin-bottom:1rem">List my charger and earn</div>
+          <div style="background:var(--accent);color:#000;font-family:var(--font-head);font-weight:700;font-size:0.85rem;padding:0.6rem 1rem;border-radius:100px">Start earning →</div>
+        </a>
       </div>
 
-      <form class="waitlist-form reveal" onsubmit="handleSignup(event)">
-        <input class="waitlist-input" type="email" id="email-input" placeholder="Your email address" required />
-        <button class="btn-primary" type="submit">Join Waitlist</button>
-      </form>
+      <div style="margin-top:1.5rem;text-align:center;font-size:0.8rem;color:var(--muted)" class="reveal">
+        Already have an account? <a href="auth.html" style="color:var(--accent);text-decoration:none">Sign in →</a>
+      </div>
 
-      <div class="success-msg" id="success-msg">
-        🎉 You're on the list! We'll be in touch when NestCharge launches in your area.
+      <!-- EMAIL CAPTURE for newsletter/updates -->
+      <div style="margin-top:2rem;background:rgba(0,212,148,0.05);border:1px solid rgba(0,212,148,0.12);border-radius:1.25rem;padding:1.25rem;text-align:center" class="reveal">
+        <div style="font-size:0.8rem;color:var(--muted);margin-bottom:0.75rem">Get updates on new chargers in your area</div>
+        <form onsubmit="handleEmailCapture(event)" style="display:flex;gap:0.5rem;max-width:360px;margin:0 auto">
+          <input type="email" id="email-input" placeholder="Your email" required
+            style="flex:1;background:var(--bg2);border:1px solid var(--border);color:var(--text);padding:0.6rem 0.875rem;border-radius:100px;font-family:var(--font-body);font-size:0.85rem;outline:none" />
+          <button type="submit" style="background:var(--accent);color:#000;border:none;padding:0.6rem 1.1rem;border-radius:100px;font-family:var(--font-head);font-size:0.82rem;font-weight:700;cursor:pointer;white-space:nowrap">Notify me</button>
+        </form>
+        <div id="email-success" style="display:none;color:var(--accent);font-size:0.82rem;margin-top:0.5rem">✅ Got it! We'll keep you posted.</div>
       </div>
     </div>
   </section>
@@ -786,22 +805,22 @@
     <p style="margin-top:0.5rem;"><a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="771f121b1b183719120403141f160510125914181a">[email&#160;protected]</a> · Privacy · Terms</p>
   </footer>
 
-  <script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script>
-    // Role toggle
-    let selectedRole = 'driver';
-    function setRole(role) {
-      selectedRole = role;
-      document.getElementById('btn-driver').classList.toggle('active', role === 'driver');
-      document.getElementById('btn-host').classList.toggle('active', role === 'host');
-    }
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script>
+    const { createClient } = supabase;
+    const sb = createClient(
+      'https://ovhezomrlrfajrmwbdya.supabase.co',
+      'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im92aGV6b21ybHJmYWpybXdiZHlhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE5NjM1MzEsImV4cCI6MjA4NzUzOTUzMX0.UTFUvtMKkyIIdJrc0GewWyTzAtONymUqZo_jJtT2ONI'
+    );
 
-    // Signup handler
-    function handleSignup(e) {
+    // Email capture — saves to Supabase
+    async function handleEmailCapture(e) {
       e.preventDefault();
       const email = document.getElementById('email-input').value;
-      console.log('Signup:', email, selectedRole); // Replace with real API call
-      document.querySelector('.waitlist-form').style.display = 'none';
-      document.getElementById('success-msg').style.display = 'block';
+      // Save to Supabase waitlist table
+      await sb.from('waitlist').upsert({ email, captured_at: new Date().toISOString() });
+      document.getElementById('email-success').style.display = 'block';
+      document.getElementById('email-input').value = '';
     }
 
     // Scroll reveal

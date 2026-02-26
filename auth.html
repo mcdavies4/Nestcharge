@@ -696,11 +696,21 @@
 
     // ── CHECK SESSION ON LOAD ──
     window.addEventListener('DOMContentLoaded', async () => {
-      // Show a loading state while we check
+      // Read ?role= from URL and pre-select
+      const params = new URLSearchParams(window.location.search);
+      const urlRole = params.get('role');
+      if (urlRole === 'host') {
+        selectRole('host');
+        switchTab('signup');
+      } else if (urlRole === 'driver') {
+        selectRole('driver');
+        switchTab('signup');
+      }
+
+      // Check existing session
       const { data: { session } } = await sb.auth.getSession();
-      // Only auto-redirect if there's an active session AND no hash (not mid-OAuth)
       if (session && !window.location.hash.includes('access_token')) {
-        showProfile(session.user);
+        redirectByRole(session.user);
       }
     });
 
@@ -779,6 +789,7 @@
       setLoading(btn, true);
       clearAlert();
 
+      sessionStorage.setItem('selectedRole', selectedRole);
       const { data, error } = await sb.auth.signUp({
         email,
         password,
@@ -801,9 +812,12 @@
 
     // ── GOOGLE SIGN IN ──
     async function signInWithGoogle() {
+      // Save role before leaving page (OAuth loses page state)
+      sessionStorage.setItem('selectedRole', selectedRole);
+      const dest = selectedRole === 'host' ? '/host-dashboard' : '/bookings';
       const { error } = await sb.auth.signInWithOAuth({
         provider: 'google',
-        options: { redirectTo: window.location.origin + '/bookings.html' }
+        options: { redirectTo: window.location.origin + dest }
       });
       if (error) showAlert(friendlyError(error.message), 'error');
     }
@@ -836,14 +850,25 @@
     }
 
     // ── SHOW PROFILE ──
-    function showProfile(user) {
-      // Redirect to app after successful login — don't show blank profile screen
+    function redirectByRole(user) {
       const meta = user.user_metadata || {};
-      const role = meta.role || 'driver';
-      // If came from a specific page, go back there — otherwise go to bookings
-      const returnTo = sessionStorage.getItem('returnTo') || (role === 'host' ? 'host-dashboard.html' : 'bookings.html');
+      const email = user.email || '';
+      // Admin check — hardcode your email here
+      const adminEmails = ['admin@nestcharge.co.uk', 'hello@nestcharge.co.uk'];
+      if (adminEmails.includes(email)) {
+        window.location.href = 'admin.html';
+        return;
+      }
+      const role = meta.role || sessionStorage.getItem('selectedRole') || 'driver';
+      const returnTo = sessionStorage.getItem('returnTo');
       sessionStorage.removeItem('returnTo');
-      window.location.href = returnTo;
+      sessionStorage.removeItem('selectedRole');
+      if (returnTo) { window.location.href = returnTo; return; }
+      window.location.href = role === 'host' ? 'host-dashboard.html' : 'bookings.html';
+    }
+
+    function showProfile(user) {
+      redirectByRole(user);
     }
 
     // ── SHOW AUTH ──
