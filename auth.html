@@ -414,7 +414,10 @@
   async function doGoogle() {
     var result = await sb.auth.signInWithOAuth({
       provider: 'google',
-      options: { redirectTo: window.location.origin + '/callback.html' }
+      options: { redirectTo: 'https://nestcharge.co.uk/callback.html' }
+    });
+    if (result.error) showError(result.error.message);
+  }
     });
     if (result.error) showError(result.error.message);
   }

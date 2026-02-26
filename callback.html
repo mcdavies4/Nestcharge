@@ -3,57 +3,50 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Signing in — NestCharge</title>
+  <title>NestCharge</title>
   <meta name="color-scheme" content="dark" />
   <style>
-    html,body{background:#070c1a;color:#dde3f0;font-family:'DM Sans',sans-serif;min-height:100vh;display:flex;align-items:center;justify-content:center;margin:0}
-    .wrap{text-align:center}
-    .logo{font-size:1.4rem;font-weight:800;margin-bottom:1.5rem;font-family:Georgia,serif}
-    .logo em{color:#00d494;font-style:normal}
-    .spinner{width:40px;height:40px;border:3px solid rgba(0,212,148,0.2);border-top-color:#00d494;border-radius:50%;animation:spin 0.8s linear infinite;margin:0 auto 1rem}
+    html,body{background:#070c1a;color:#dde3f0;font-family:sans-serif;min-height:100vh;display:flex;align-items:center;justify-content:center;margin:0;text-align:center}
+    .spinner{width:44px;height:44px;border:3px solid rgba(0,212,148,0.2);border-top-color:#00d494;border-radius:50%;animation:spin 0.8s linear infinite;margin:0 auto 1.5rem}
     @keyframes spin{to{transform:rotate(360deg)}}
+    h2{font-size:1.3rem;margin-bottom:0.5rem}
     p{color:#8e9ab0;font-size:0.9rem}
   </style>
 </head>
 <body>
-<div class="wrap">
-  <div class="logo">Nest<em>Charge</em></div>
-  <div class="spinner"></div>
-  <p>Signing you in...</p>
-</div>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script>
-  var sb = supabase.createClient(
-    'https://ovhezomrlrfajrmwbdya.supabase.co',
-    'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im92aGV6b21ybHJmYWpybXdiZHlhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE5NjM1MzEsImV4cCI6MjA4NzUzOTUzMX0.UTFUvtMKkyIIdJrc0GewWyTzAtONymUqZo_jJtT2ONI'
-  );
+  <div>
+    <div class="spinner"></div>
+    <h2>Signing you in…</h2>
+    <p>Just a moment</p>
+  </div>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script>
+    var sb = supabase.createClient(
+      'https://ovhezomrlrfajrmwbdya.supabase.co',
+      'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im92aGV6b21ybHJmYWpybXdiZHlhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE5NjM1MzEsImV4cCI6MjA4NzUzOTUzMX0.UTFUvtMKkyIIdJrc0GewWyTzAtONymUqZo_jJtT2ONI'
+    );
 
-  // This page is the single landing point after ANY OAuth login
-  // Supabase parses the hash token, fires onAuthStateChange, we redirect by role
-  sb.auth.onAuthStateChange(function(event, session) {
-    if (event === 'SIGNED_IN' && session) {
-      var user = session.user;
-      var meta = user.user_metadata || {};
-      var role = meta.role || 'driver';
-      var admins = ['hello@nestcharge.co.uk', 'admin@nestcharge.co.uk'];
-      if (admins.indexOf(user.email) > -1) {
-        window.location.replace('admin.html');
-      } else if (role === 'host') {
-        window.location.replace('host-dashboard.html');
-      } else {
-        window.location.replace('bookings.html');
-      }
+    function redirect(user) {
+      var role = (user.user_metadata || {}).role || 'driver';
+      var admins = ['hello@nestcharge.co.uk','admin@nestcharge.co.uk'];
+      if (admins.indexOf(user.email) > -1) { window.location.replace('admin.html'); return; }
+      window.location.replace(role === 'host' ? 'host-dashboard.html' : 'bookings.html');
     }
-  });
 
-  // Fallback — if no session after 5s, go to login
-  setTimeout(function() {
-    sb.auth.getSession().then(function(result) {
-      if (!result.data.session) {
-        window.location.replace('auth.html');
-      }
+    // Handle OAuth token in URL hash
+    sb.auth.onAuthStateChange(function(event, session) {
+      if (session) { redirect(session.user); }
     });
-  }, 5000);
-</script>
+
+    // Also check immediately in case session already exists
+    sb.auth.getSession().then(function(r) {
+      if (r.data && r.data.session) { redirect(r.data.session.user); }
+    });
+
+    // Safety fallback after 6s
+    setTimeout(function() {
+      window.location.replace('auth.html');
+    }, 6000);
+  </script>
 </body>
 </html>
