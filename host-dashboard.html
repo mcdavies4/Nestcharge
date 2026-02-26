@@ -442,7 +442,7 @@
     // ── INIT ──
     window.addEventListener('DOMContentLoaded', async () => {
       const { data: { session } } = await sb.auth.getSession();
-      if (!session) { window.location.href = 'auth.html'; return; }
+      if (!session) { sessionStorage.setItem('returnTo', window.location.pathname.replace('/','') || 'bookings.html'); window.location.href = 'auth.html'; return; }
 
       currentUser = session.user;
       const meta = currentUser.user_metadata || {};

@@ -696,13 +696,18 @@
 
     // ── CHECK SESSION ON LOAD ──
     window.addEventListener('DOMContentLoaded', async () => {
+      // Show a loading state while we check
       const { data: { session } } = await sb.auth.getSession();
-      if (session) showProfile(session.user);
+      // Only auto-redirect if there's an active session AND no hash (not mid-OAuth)
+      if (session && !window.location.hash.includes('access_token')) {
+        showProfile(session.user);
+      }
     });
 
     // ── AUTH STATE LISTENER ──
+    // Handles Google OAuth callback — Supabase fires SIGNED_IN after parsing the hash
     sb.auth.onAuthStateChange((event, session) => {
-      if (event === 'SIGNED_IN' && session) {
+      if ((event === 'SIGNED_IN' || event === 'INITIAL_SESSION') && session) {
         showProfile(session.user);
       } else if (event === 'SIGNED_OUT') {
         showAuth();
@@ -798,7 +803,7 @@
     async function signInWithGoogle() {
       const { error } = await sb.auth.signInWithOAuth({
         provider: 'google',
-        options: { redirectTo: window.location.href }
+        options: { redirectTo: window.location.origin + '/bookings.html' }
       });
       if (error) showAlert(friendlyError(error.message), 'error');
     }
@@ -832,17 +837,13 @@
 
     // ── SHOW PROFILE ──
     function showProfile(user) {
-      document.getElementById('auth-wrap').style.display = 'none';
-      document.getElementById('profile-wrap').style.display = 'block';
-
+      // Redirect to app after successful login — don't show blank profile screen
       const meta = user.user_metadata || {};
-      const name = meta.full_name || meta.name || user.email.split('@')[0];
       const role = meta.role || 'driver';
-
-      document.getElementById('profile-name').textContent = name;
-      document.getElementById('profile-email').textContent = user.email;
-      document.getElementById('profile-avatar').textContent = name.charAt(0).toUpperCase();
-      document.getElementById('profile-role').textContent = role === 'host' ? '🏠 Host' : '🚗 Driver';
+      // If came from a specific page, go back there — otherwise go to bookings
+      const returnTo = sessionStorage.getItem('returnTo') || (role === 'host' ? 'host-dashboard.html' : 'bookings.html');
+      sessionStorage.removeItem('returnTo');
+      window.location.href = returnTo;
     }
 
     // ── SHOW AUTH ──
