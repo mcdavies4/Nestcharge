@@ -26,27 +26,43 @@
       'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im92aGV6b21ybHJmYWpybXdiZHlhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE5NjM1MzEsImV4cCI6MjA4NzUzOTUzMX0.UTFUvtMKkyIIdJrc0GewWyTzAtONymUqZo_jJtT2ONI'
     );
 
+    var gone = false;
+
     function redirect(user) {
-      var role = (user.user_metadata || {}).role || 'driver';
-      var admins = ['hello@nestcharge.co.uk','admin@nestcharge.co.uk'];
-      if (admins.indexOf(user.email) > -1) { window.location.replace('admin.html'); return; }
-      window.location.replace(role === 'host' ? 'host-dashboard.html' : 'bookings.html');
+      if (gone) return;
+      gone = true;
+      var role = ((user && user.user_metadata) || {}).role || 'driver';
+      var admins = ['hello@nestcharge.co.uk', 'admin@nestcharge.co.uk'];
+      if (admins.indexOf(user.email) > -1) {
+        window.location.replace('admin.html');
+      } else if (role === 'host') {
+        window.location.replace('host-dashboard.html');
+      } else {
+        window.location.replace('bookings.html');
+      }
     }
 
-    // Handle OAuth token in URL hash
+    // Method 1: onAuthStateChange — fires when Supabase parses the URL hash token
     sb.auth.onAuthStateChange(function(event, session) {
-      if (session) { redirect(session.user); }
+      if (session && session.user) {
+        redirect(session.user);
+      }
     });
 
-    // Also check immediately in case session already exists
-    sb.auth.getSession().then(function(r) {
-      if (r.data && r.data.session) { redirect(r.data.session.user); }
-    });
-
-    // Safety fallback after 6s
-    setTimeout(function() {
-      window.location.replace('auth.html');
-    }, 6000);
+    // Method 2: Poll getSession every 500ms for up to 15 seconds
+    var attempts = 0;
+    var poll = setInterval(async function() {
+      attempts++;
+      var result = await sb.auth.getSession();
+      if (result.data && result.data.session) {
+        clearInterval(poll);
+        redirect(result.data.session.user);
+      }
+      if (attempts >= 30) {
+        clearInterval(poll);
+        if (!gone) window.location.replace('auth.html');
+      }
+    }, 500);
   </script>
 </body>
 </html>

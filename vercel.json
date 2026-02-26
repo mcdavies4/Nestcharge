@@ -1,0 +1,19 @@
+{
+  "cleanUrls": true,
+  "trailingSlash": false,
+  "redirects": [
+    {
+      "source": "/callback",
+      "destination": "/callback.html",
+      "permanent": false
+    }
+  ],
+  "headers": [
+    {
+      "source": "/callback.html",
+      "headers": [
+        { "key": "Cache-Control", "value": "no-store, no-cache, must-revalidate" }
+      ]
+    }
+  ]
+}

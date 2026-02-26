@@ -256,7 +256,7 @@ async function doSignup() {
 async function doGoogle() {
   var r = await sb.auth.signInWithOAuth({
     provider: 'google',
-    options: { redirectTo: 'https://nestcharge.co.uk/callback.html' }
+    options: { redirectTo: 'https://nestcharge.co.uk/callback' }
   });
   if (r.error) { showError(r.error.message); }
 }
