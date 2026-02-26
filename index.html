@@ -42,12 +42,12 @@
     :root {
       --bg: #070c1a;
       --bg2: #0d1428;
-      --surface: #111827;
-      --border: rgba(255,255,255,0.07);
-      --accent: #00e5a0;
+      --surface: #131d2e;
+      --border: rgba(255,255,255,0.09);
+      --accent: #00d494;
       --accent2: #0af;
-      --text: #f0f4ff;
-      --muted: #8892a4;
+      --text: #dde3f0;
+      --muted: #9aa3b5;
       --font-head: 'Syne', sans-serif;
       --font-body: 'DM Sans', sans-serif;
     }
@@ -809,4 +809,7 @@
     const observer = new IntersectionObserver((entries) => {
       entries.forEach(e => { if(e.isIntersecting) { e.target.classList.add('visible'); } });
     }, { threshold: 0.1 });
-    reveals.for
+    reveals.forEach(r => observer.observe(r));
+  </script>
+</body>
+</html>
